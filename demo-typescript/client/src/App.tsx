@@ -3,6 +3,8 @@ import { OpenKit403Client } from '@openkitx403/client';
 import WalletConnect from './components/WalletConnect';
 import Gallery from './components/Gallery';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
 function App() {
   const [client] = useState(() => new OpenKit403Client());
   const [isConnected, setIsConnected] = useState(false);
@@ -19,7 +21,7 @@ function App() {
       await client.connect(walletType);
       
       const result = await client.authenticate({
-        resource: 'http://localhost:3000/api/nfts',
+        resource: `${API_URL}/api/nfts`,
         method: 'GET'
       });
 
