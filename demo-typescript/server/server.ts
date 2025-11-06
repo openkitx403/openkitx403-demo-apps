@@ -12,11 +12,10 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(',') || [
   'https://openkitx403-demo-apps.vercel.app'
 ];
 
+// FIXED: Added exposedHeaders
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
     if (ALLOWED_ORIGINS.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
@@ -25,20 +24,20 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Openkitx403-Signature', 'X-Openkitx403-Timestamp', 'X-Openkitx403-Address', 'WWW-Authenticate', 'www-authenticate']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['WWW-Authenticate']  // THIS IS THE FIX!
 }));
 
 app.use(express.json());
 
 const openkit = createOpenKit403({
   issuer: 'nft-gallery-demo',
-  audience: 'http://localhost:3000',
+  audience: process.env.AUDIENCE || 'http://localhost:3000',
   ttlSeconds: 60,
   bindMethodPath: true,
   replayStore: inMemoryLRU()
 });
 
-// Extend Express Request type to include openkitx403User
 interface OpenKitRequest extends Request {
   openkitx403User?: {
     address: string;
@@ -46,7 +45,6 @@ interface OpenKitRequest extends Request {
   };
 }
 
-// Public endpoint
 app.get('/', (req: Request, res: Response) => {
   res.json({
     message: 'OpenKitx403 NFT Gallery Demo API',
@@ -57,14 +55,12 @@ app.get('/', (req: Request, res: Response) => {
   });
 });
 
-// Protected NFT gallery endpoint
 const protectedRouter: Router = express.Router();
 protectedRouter.use(openkit.middleware());
 
 protectedRouter.get('/nfts', (req: OpenKitRequest, res: Response) => {
   const user = req.openkitx403User;
-
-  // Mock NFT data
+  
   const nfts = [
     {
       id: 1,
@@ -128,4 +124,5 @@ app.use('/api', protectedRouter);
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Server running on port ${PORT}`);
+  console.log(`📱 CORS origins: ${ALLOWED_ORIGINS.join(', ')}`);
 });
