@@ -1,7 +1,6 @@
 {
   "name": "openkitx403-demo-server",
   "version": "1.0.0",
-  "type": "module",
   "scripts": {
     "dev": "tsx watch server.ts",
     "build": "tsc",
