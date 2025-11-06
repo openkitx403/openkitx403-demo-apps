@@ -1,3 +1,4 @@
+const API_URL='https://openkitx403-demo-apps.onrender.com';
 // This is a demo frontend - in production, you'd connect to a real agent API
 const chatMessages = document.getElementById('chatMessages');
 const chatForm = document.getElementById('chatForm');
