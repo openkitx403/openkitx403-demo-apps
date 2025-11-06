@@ -53,7 +53,7 @@ export class OpenKit403Client {
     console.log('📡 First response status:', response1.status);
 
     if (response1.status !== 403) {
-      console.log('✅ No authentication required, returning response');
+      console.log('✅ No authentication required');
       return response1;
     }
 
@@ -62,35 +62,34 @@ export class OpenKit403Client {
     console.log('🔍 WWW-Authenticate header:', authHeader);
     
     if (!authHeader) {
-      throw new Error('No authentication challenge received from server');
+      throw new Error('No authentication challenge received');
     }
 
-    // Extract challenge from header
-    // Format: OpenKitx403 realm="...", version="1", challenge="base64challenge"
+    // Extract challenge
     const challengeMatch = authHeader.match(/challenge="([^"]+)"/);
     if (!challengeMatch) {
-      console.error('❌ Could not parse challenge from:', authHeader);
       throw new Error('Invalid authentication challenge format');
     }
 
     const challengeB64 = challengeMatch[1];
-    console.log('🎯 Challenge (base64):', challengeB64.substring(0, 20) + '...');
+    console.log('🎯 Challenge (base64):', challengeB64.substring(0, 30) + '...');
 
-    // Create message to sign
-    const message = new TextEncoder().encode(challengeB64);
+    // CRITICAL FIX: Decode the base64 challenge to bytes before signing
+    const challengeBytes = Uint8Array.from(atob(challengeB64), c => c.charCodeAt(0));
+    console.log('📝 Challenge bytes length:', challengeBytes.length);
     console.log('✍️ Requesting wallet signature...');
 
-    // Sign with wallet
-    const signed = await this.wallet.signMessage(message, 'utf8');
+    // Sign the decoded bytes (NOT the base64 string)
+    const signed = await this.wallet.signMessage(challengeBytes);
     console.log('✅ Message signed');
 
     // Encode signature as base64
     const signatureB64 = btoa(String.fromCharCode(...signed.signature));
-    console.log('🔐 Signature (base64):', signatureB64.substring(0, 20) + '...');
+    console.log('🔐 Signature (base64):', signatureB64.substring(0, 30) + '...');
 
-    // Build Authorization header
+    // Build Authorization header - using the format expected by @openkitx403/server
     const authValue = `Solana-Wallet address="${this.wallet.publicKey.toString()}", signature="${signatureB64}", nonce="${challengeB64}"`;
-    console.log('📤 Retrying with Authorization header...');
+    console.log('📤 Authorization:', authValue.substring(0, 100) + '...');
 
     // Retry with Authorization header
     const response2 = await fetch(resource, {
@@ -106,7 +105,8 @@ export class OpenKit403Client {
     if (response2.ok) {
       console.log('🎉 Authentication successful!');
     } else {
-      console.error('❌ Authentication failed:', response2.status);
+      const errorText = await response2.text();
+      console.error('❌ Authentication failed:', response2.status, errorText);
     }
 
     return response2;
