@@ -32,7 +32,7 @@ app.use(express.json());
 
 const openkit = createOpenKit403({
   issuer: 'nft-gallery-demo',
-  audience: process.env.AUDIENCE || 'http://localhost:3000',
+  audience: process.env.AUDIENCE || 'https://openkitx403-nft-gallery-api.onrender.com',
   ttlSeconds: 60,
   bindMethodPath: true,
   replayStore: inMemoryLRU()
