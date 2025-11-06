@@ -25,7 +25,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Openkitx403-Signature', 'X-Openkitx403-Timestamp', 'X-Openkitx403-Address', 'WWW-Authenticate']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Openkitx403-Signature', 'X-Openkitx403-Timestamp', 'X-Openkitx403-Address', 'WWW-Authenticate', 'www-authenticate']
 }));
 
 app.use(express.json());
