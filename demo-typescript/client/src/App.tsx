@@ -24,7 +24,6 @@ function App() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
 
   useEffect(() => {
-    // Initialize client
     const openKitClient = new OpenKit403Client();
     setClient(openKitClient);
   }, []);
@@ -36,13 +35,11 @@ function App() {
     setError(null);
 
     try {
-      // Connect to wallet
       await client.connect(walletType);
       const address = client.getAddress();
       setWalletAddress(address);
       setConnected(true);
 
-      // Authenticate and fetch NFTs
       await fetchNFTs();
     } catch (err: any) {
       console.error('Connection error:', err);
@@ -70,21 +67,33 @@ function App() {
     setError(null);
 
     try {
-      // Authenticate with backend using OpenKitx403
       const response = await client.authenticate({
         resource: `${API_URL}/api/nfts`,
         method: 'GET'
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setNfts(data.nfts || []);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch NFTs: HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('NFT Response:', data);
+
+      if (data && Array.isArray(data.nfts)) {
+        setNfts(data.nfts);
+        console.log(`Loaded ${data.nfts.length} NFTs`);
+      } else if (Array.isArray(data)) {
+        setNfts(data);
+        console.log(`Loaded ${data.length} NFTs`);
       } else {
-        throw new Error('Failed to fetch NFTs');
+        console.warn('Unexpected response format:', data);
+        setNfts([]);
+        setError('Could not parse NFT data');
       }
     } catch (err: any) {
       console.error('Fetch error:', err);
       setError(err.message || 'Failed to authenticate and fetch NFTs');
+      setNfts([]);
     } finally {
       setLoading(false);
     }
@@ -118,7 +127,7 @@ function App() {
           <div className="hero">
             <h2 className="title">NFT-Gated Gallery</h2>
             <p className="subtitle">
-              Connect your Solana wallet to view exclusive NFT content. 
+              Connect your Solana wallet to view exclusive NFT content.
               This demo shows wallet authentication in action.
             </p>
           </div>
@@ -131,13 +140,13 @@ function App() {
           )}
 
           {!connected ? (
-            <WalletConnect 
-              onConnect={handleConnect} 
+            <WalletConnect
+              onConnect={handleConnect}
               loading={loading}
             />
           ) : (
-            <Gallery 
-              nfts={nfts} 
+            <Gallery
+              nfts={nfts}
               loading={loading}
               onRefresh={fetchNFTs}
             />
@@ -180,3 +189,4 @@ function App() {
 }
 
 export default App;
+
