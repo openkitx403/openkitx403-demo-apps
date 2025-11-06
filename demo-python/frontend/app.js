@@ -1,3 +1,6 @@
+const API_URL = 'https://openkitx403-demo-app-py.onrender.com';
+const WS_URL = API_URL.replace('https', 'wss');
+
 // WebSocket connection
 let ws = null;
 let reconnectTimer = null;
@@ -10,8 +13,8 @@ let prices = {};
 
 // Connect to WebSocket
 function connectWebSocket() {
-    ws = new WebSocket('ws://localhost:8000/ws');
-    
+    ws = new WebSocket(`${WS_URL}/ws`);
+
     ws.onopen = () => {
         console.log('WebSocket connected');
         updateStatus(true);
