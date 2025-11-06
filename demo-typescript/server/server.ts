@@ -1,18 +1,17 @@
-import express from 'express';
+import express, { Request, Response, Router } from 'express';
 import cors from 'cors';
 import { createOpenKit403, inMemoryLRU } from '@openkitx403/server';
 import dotenv from 'dotenv';
+
 dotenv.config();
 
 const app = express();
-
 const PORT = process.env.PORT || 3000;
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5173'];
 
-
-app.use(cors({ 
+app.use(cors({
   origin: ALLOWED_ORIGINS,
-  credentials: true 
+  credentials: true
 }));
 app.use(express.json());
 
@@ -24,8 +23,16 @@ const openkit = createOpenKit403({
   replayStore: inMemoryLRU()
 });
 
+// Extend Express Request type to include openkitx403User
+interface OpenKitRequest extends Request {
+  openkitx403User?: {
+    address: string;
+    [key: string]: any;
+  };
+}
+
 // Public endpoint
-app.get('/', (req, res) => {
+app.get('/', (req: Request, res: Response) => {
   res.json({
     message: 'OpenKitx403 NFT Gallery Demo API',
     status: 'running',
@@ -36,12 +43,12 @@ app.get('/', (req, res) => {
 });
 
 // Protected NFT gallery endpoint
-const protectedRouter = express.Router();
+const protectedRouter: Router = express.Router();
 protectedRouter.use(openkit.middleware());
 
-protectedRouter.get('/nfts', (req, res) => {
-  const user = (req as any).openkitx403User;
-  
+protectedRouter.get('/nfts', (req: OpenKitRequest, res: Response) => {
+  const user = req.openkitx403User;
+
   // Mock NFT data
   const nfts = [
     {
@@ -95,7 +102,7 @@ protectedRouter.get('/nfts', (req, res) => {
   ];
 
   res.json({
-    wallet: user.address,
+    wallet: user?.address,
     nfts,
     count: nfts.length,
     message: 'Successfully authenticated!'
