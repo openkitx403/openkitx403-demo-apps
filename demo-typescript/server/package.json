@@ -5,8 +5,7 @@
   "scripts": {
     "dev": "tsx watch server.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
-    "lint": "tsc --noEmit"
+    "start": "node dist/server.js"
   },
   "dependencies": {
     "@openkitx403/server": "^0.1.1",
