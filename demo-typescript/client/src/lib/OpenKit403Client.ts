@@ -6,7 +6,7 @@ export class OpenKit403Client {
 
   async connect(type: 'phantom' | 'backpack' | 'solflare') {
     this.walletType = type;
-    
+
     const wallets: any = {
       phantom: (window as any).phantom?.solana,
       backpack: (window as any).backpack,
@@ -14,7 +14,7 @@ export class OpenKit403Client {
     };
 
     this.wallet = wallets[type];
-    
+
     if (!this.wallet) {
       throw new Error(`${type} wallet not found`);
     }
@@ -39,6 +39,7 @@ export class OpenKit403Client {
   }
 
   private buildSigningString(challenge: any): string {
+    // CRITICAL: This must match the server's buildSigningString exactly
     const lines = [
       'OpenKitx403 Challenge',
       '',
@@ -49,9 +50,10 @@ export class OpenKit403Client {
       `method: ${challenge.method}`,
       `path: ${challenge.path}`,
       '',
+      // FIXED: Ensure JSON is serialized with sorted keys exactly as server expects
       `payload: ${JSON.stringify(challenge, Object.keys(challenge).sort())}`
     ];
-    
+
     return lines.join('\n');
   }
 
@@ -95,7 +97,7 @@ export class OpenKit403Client {
     try {
       const challengeJson = this.base64urlDecode(challengeEncoded);
       challenge = JSON.parse(challengeJson);
-      console.log('✅ Challenge decoded');
+      console.log('✅ Challenge decoded:', challenge);
     } catch (err) {
       console.error('❌ Failed to decode challenge:', err);
       throw new Error('Invalid challenge format');
@@ -119,13 +121,15 @@ export class OpenKit403Client {
     const signatureBS58 = bs58.encode(signed.signature);
     console.log('🔐 Signature encoded (bs58)');
 
-    // Build Authorization header WITHOUT bind parameter to avoid router path mismatch
+    // Build Authorization header with bind parameter matching method:path
     const clientNonce = this.generateNonce();
     const clientTs = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+    const url = new URL(resource);
+    const bind = `${method}:${url.pathname}`;
 
-    const authValue = `OpenKitx403 addr="${this.wallet.publicKey}", sig="${signatureBS58}", challenge="${challengeEncoded}", ts="${clientTs}", nonce="${clientNonce}"`;
+    const authValue = `OpenKitx403 addr="${this.wallet.publicKey}", sig="${signatureBS58}", challenge="${challengeEncoded}", ts="${clientTs}", nonce="${clientNonce}", bind="${bind}"`;
 
-    console.log('🔄 Retrying...');
+    console.log('🔄 Retrying with auth...');
     const res2 = await fetch(resource, {
       method,
       headers: {
@@ -143,3 +147,4 @@ export class OpenKit403Client {
     return res2;
   }
 }
+
