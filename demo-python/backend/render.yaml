@@ -10,6 +10,6 @@ services:
       - key: PORT
         value: 8000i
       - key: PYTHON_VERSION
-        value: "3.11"
+        value: "3.11.9"
       - key: ALLOWED_ORIGINS
         value: http://localhost:8000,https://your-frontend.vercel.app
