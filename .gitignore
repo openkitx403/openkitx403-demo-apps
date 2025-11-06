@@ -1,0 +1,90 @@
+# ---- OS / Editor junk ----
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.swp
+*.swo
+*.orig
+*.bak
+
+.vscode/
+.idea/
+*.iml
+
+# ---- Node / TypeScript ----
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build outputs
+dist/
+build/
+out/
+lib/
+.esm/
+.cjs/
+.temp/
+.cache/
+*.tsbuildinfo
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Coverage / tests
+coverage/
+.nyc_output/
+jest.config.js.tsbuildinfo
+.jest-cache/
+.jest/
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual envs
+.venv/
+venv/
+env/
+.envrc
+
+# Packaging
+build/
+dist/
+.eggs/
+*.egg-info/
+.installed.cfg
+MANIFEST
+
+# Python tooling
+.mypy_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.dmypy.json
+.pyre/
+.pytype/
+
+# ---- Generated API / docs / misc ----
+docs/_build/
+site/
+public/
+swagger.json
+openapi.json
+
+# ---- Local dev / misc ----
+*.sqlite3
+*.db
+*.pid
+.sass-cache/
+

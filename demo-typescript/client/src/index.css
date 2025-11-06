@@ -1,0 +1,406 @@
+:root {
+  --bg-primary: #08080e;
+  --bg-secondary: #0f0f19;
+  --bg-tertiary: #161625;
+  --accent-primary: #9945ff;
+  --accent-secondary: #00d4ff;
+  --text-primary: #ffffff;
+  --text-secondary: #b4b4d0;
+  --text-muted: #7a7a9e;
+  --border: #2d2d4a;
+  --success: #14F195;
+  --error: #ff5757;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.header {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  padding: 1.5rem 2rem;
+}
+
+.header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.logo-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.demo-badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--accent-primary);
+  border-radius: 999px;
+  color: var(--accent-primary);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Main Content */
+.main {
+  flex: 1;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+}
+
+/* Connect Section */
+.connect-section {
+  text-align: center;
+  padding: 4rem 2rem;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.connect-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.connect-description {
+  color: var(--text-secondary);
+  font-size: 1.125rem;
+  margin-bottom: 2rem;
+  line-height: 1.8;
+}
+
+.wallet-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.wallet-button {
+  padding: 1rem 2rem;
+  background: var(--bg-secondary);
+  border: 2px solid var(--accent-primary);
+  border-radius: 0.5rem;
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.wallet-button:hover:not(:disabled) {
+  background: var(--accent-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(153, 69, 255, 0.3);
+}
+
+.wallet-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.wallet-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.feature-list {
+  text-align: left;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  margin-top: 2rem;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.check-icon {
+  color: var(--success);
+  font-weight: 700;
+}
+
+/* Gallery Section */
+.gallery-section {
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.gallery-header {
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.wallet-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  background: var(--bg-secondary);
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+}
+
+.wallet-address {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--success);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.wallet-text {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--accent-primary);
+  font-size: 0.875rem;
+}
+
+.disconnect-button {
+  padding: 0.5rem 1.5rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.disconnect-button:hover {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.gallery-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+  margin-bottom: 0.5rem;
+}
+
+.gallery-subtitle {
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+
+/* NFT Grid */
+.nft-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 2rem;
+}
+
+.nft-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  transition: all 0.3s;
+  cursor: pointer;
+}
+
+.nft-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--accent-primary);
+  box-shadow: 0 10px 40px rgba(153, 69, 255, 0.2);
+}
+
+.nft-image {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-secondary));
+}
+
+.nft-content {
+  padding: 1.5rem;
+}
+
+.nft-name {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.nft-description {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+}
+
+.nft-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.nft-trait {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.nft-trait-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.nft-trait-value {
+  font-size: 0.875rem;
+  color: var(--accent-secondary);
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Loading */
+.loading {
+  text-align: center;
+  padding: 4rem 2rem;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error */
+.error {
+  background: rgba(255, 87, 87, 0.1);
+  border: 1px solid var(--error);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  color: var(--error);
+  margin-bottom: 1rem;
+}
+
+/* Footer */
+.footer {
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  padding: 2rem;
+  text-align: center;
+  margin-top: auto;
+}
+
+.footer-text {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.footer-link {
+  color: var(--accent-primary);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-link:hover {
+  color: var(--accent-secondary);
+  text-decoration: underline;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .connect-title {
+    font-size: 2rem;
+  }
+
+  .main {
+    padding: 2rem 1rem;
+  }
+
+  .nft-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenKitx403 Trading Bot Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-text">OpenKitx403</span>
+                    <span class="demo-badge">DEMO</span>
+                </div>
+                <div class="header-right">
+                    <span class="status-indicator">
+                        <span class="status-dot" id="statusDot"></span>
+                        <span id="statusText">Connecting...</span>
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Hero Section -->
+            <section class="hero-section">
+                <h1 class="hero-title">Trading Bot Dashboard</h1>
+                <p class="hero-subtitle">
+                    Real-time monitoring of autonomous trading bots authenticated with Solana wallets
+                </p>
+                <div class="hero-stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalBots">0</div>
+                        <div class="stat-label">Active Bots</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalTrades">0</div>
+                        <div class="stat-label">Total Trades</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalVolume">$0</div>
+                        <div class="stat-label">Volume (24h)</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Market Prices -->
+            <section class="section">
+                <h2 class="section-title">📈 Live Market Prices</h2>
+                <div class="price-grid" id="priceGrid">
+                    <!-- Prices will be inserted here -->
+                </div>
+            </section>
+
+            <!-- Activity Feed -->
+            <section class="section">
+                <h2 class="section-title">⚡ Recent Activity</h2>
+                <div class="activity-feed" id="activityFeed">
+                    <div class="empty-state">
+                        <p>Waiting for bot activity...</p>
+                        <p class="empty-state-sub">Start the Python bot to see trades here</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Instructions -->
+            <section class="section">
+                <div class="instructions-card">
+                    <h3 class="instructions-title">🤖 How to Run the Bot</h3>
+                    <div class="instructions-content">
+                        <div class="instruction-step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <div class="step-title">Generate Keypair</div>
+                                <code class="step-code">solana-keygen new --outfile bot/keypair.json</code>
+                            </div>
+                        </div>
+                        <div class="instruction-step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <div class="step-title">Install Dependencies</div>
+                                <code class="step-code">cd bot && pip install -r requirements.txt</code>
+                            </div>
+                        </div>
+                        <div class="instruction-step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <div class="step-title">Run the Bot</div>
+                                <code class="step-code">python bot.py</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p class="footer-text">
+                Powered by 
+                <a href="https://github.com/openkitx403" class="footer-link" target="_blank">OpenKitx403</a>
+                · HTTP-native wallet authentication for Solana
+            </p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
