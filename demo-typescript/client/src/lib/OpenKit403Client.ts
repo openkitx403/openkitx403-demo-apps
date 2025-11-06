@@ -1,149 +1,179 @@
-import bs58 from 'bs58';
+import { useState, useEffect } from 'react';
+import { OpenKit403Client } from './lib/OpenKit403Client';
+import WalletConnect from './components/WalletConnect';
+import Gallery from './components/Gallery';
+import './index.css';
 
-export class OpenKit403Client {
-  private wallet: any = null;
-  private walletType: string | null = null;
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-  async connect(type: 'phantom' | 'backpack' | 'solflare') {
-    this.walletType = type;
-
-    const wallets: any = {
-      phantom: (window as any).phantom?.solana,
-      backpack: (window as any).backpack,
-      solflare: (window as any).solflare
-    };
-
-    this.wallet = wallets[type];
-
-    if (!this.wallet) {
-      throw new Error(`${type} wallet not found`);
-    }
-
-    await this.wallet.connect();
-  }
-
-  getAddress(): string {
-    return this.wallet?.publicKey?.toString() || '';
-  }
-
-  disconnect() {
-    this.wallet?.disconnect?.();
-    this.wallet = null;
-  }
-
-  private base64urlDecode(str: string): string {
-    const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
-    const padding = (4 - (base64.length % 4)) % 4;
-    const padded = base64 + '='.repeat(padding);
-    return atob(padded);
-  }
-
-  private buildSigningString(challenge: any): string {
-    const lines = [
-      'OpenKitx403 Challenge',
-      '',
-      `domain: ${challenge.aud}`,
-      `server: ${challenge.serverId}`,
-      `nonce: ${challenge.nonce}`,
-      `ts: ${challenge.ts}`,
-      `method: ${challenge.method}`,
-      `path: ${challenge.path}`,
-      '',
-      `payload: ${JSON.stringify(challenge, Object.keys(challenge).sort())}`
-    ];
-
-    return lines.join('\n');
-  }
-
-  private generateNonce(): string {
-    const array = new Uint8Array(16);
-    crypto.getRandomValues(array);
-    return btoa(String.fromCharCode(...array))
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=/g, '');
-  }
-
-  async authenticate({ resource, method = 'GET' }: { resource: string; method?: string }) {
-    if (!this.wallet?.publicKey) {
-      throw new Error('Wallet not connected');
-    }
-
-    console.log('🔐 Starting authentication...');
-
-    const res1 = await fetch(resource, { method });
-
-    if (res1.status !== 403) {
-      return res1;
-    }
-
-    const authHeader = res1.headers.get('WWW-Authenticate');
-    if (!authHeader || !authHeader.startsWith('OpenKitx403')) {
-      throw new Error('No OpenKitx403 challenge found');
-    }
-
-    console.log('✅ Got challenge header');
-
-    const challengeMatch = authHeader.match(/challenge="([^"]+)"/);
-    if (!challengeMatch) {
-      throw new Error('No challenge in header');
-    }
-
-    const challengeEncoded = challengeMatch[1];
-
-    let challenge;
-    try {
-      const challengeJson = this.base64urlDecode(challengeEncoded);
-      challenge = JSON.parse(challengeJson);
-      console.log('✅ Challenge decoded:', challenge);
-    } catch (err) {
-      console.error('❌ Failed to decode challenge:', err);
-      throw new Error('Invalid challenge format');
-    }
-
-    const signingString = this.buildSigningString(challenge);
-    console.log('📝 Built signing string');
-
-    const messageBytes = new TextEncoder().encode(signingString);
-    console.log('✍️ Requesting signature...');
-
-    let signed;
-    try {
-      signed = await this.wallet.signMessage(messageBytes);
-      console.log('✅ Signed');
-    } catch (err) {
-      console.error('❌ Signing failed:', err);
-      throw new Error('Failed to sign message');
-    }
-
-    const signatureBS58 = bs58.encode(signed.signature);
-    console.log('🔐 Signature encoded (bs58)');
-
-    // CRITICAL FIX: Use the challenge's method and path for bind parameter
-    const clientNonce = this.generateNonce();
-    const clientTs = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
-    
-    // Use method and path from the CHALLENGE, not from the request
-    const bind = `${challenge.method}:${challenge.path}`;
-
-    const authValue = `OpenKitx403 addr="${this.wallet.publicKey}", sig="${signatureBS58}", challenge="${challengeEncoded}", ts="${clientTs}", nonce="${clientNonce}", bind="${bind}"`;
-
-    console.log('🔄 Retrying with auth...');
-    const res2 = await fetch(resource, {
-      method,
-      headers: {
-        'Authorization': authValue
-      }
-    });
-
-    if (res2.ok) {
-      console.log('🎉 SUCCESS!');
-    } else {
-      const errorText = await res2.text();
-      console.error('❌ Failed:', errorText);
-    }
-
-    return res2;
-  }
+interface NFT {
+  id: number;
+  name: string;
+  image: string;
+  description: string;
+  rarity: string;
+  collection: string;
 }
+
+function App() {
+  const [client, setClient] = useState<OpenKit403Client | null>(null);
+  const [connected, setConnected] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [nfts, setNfts] = useState<NFT[]>([]);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+
+  useEffect(() => {
+    const openKitClient = new OpenKit403Client();
+    setClient(openKitClient);
+  }, []);
+
+  const handleConnect = async (walletType: 'phantom' | 'backpack' | 'solflare') => {
+    if (!client) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      await client.connect(walletType);
+      const address = client.getAddress();
+      setWalletAddress(address);
+      setConnected(true);
+
+      await fetchNFTs();
+    } catch (err: any) {
+      console.error('Connection error:', err);
+      setError(err.message || 'Failed to connect wallet');
+      setConnected(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDisconnect = () => {
+    if (client) {
+      client.disconnect();
+    }
+    setConnected(false);
+    setWalletAddress(null);
+    setNfts([]);
+    setError(null);
+  };
+
+  const fetchNFTs = async () => {
+    if (!client) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await client.authenticate({
+        resource: `${API_URL}/api/nfts`,
+        method: 'GET'
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setNfts(data.nfts || []);
+      } else {
+        throw new Error('Failed to fetch NFTs');
+      }
+    } catch (err: any) {
+      console.error('Fetch error:', err);
+      setError(err.message || 'Failed to authenticate and fetch NFTs');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="app">
+      <header className="header">
+        <div className="container">
+          <div className="header-content">
+            <div className="logo">
+              <h1>OpenKitx403</h1>
+              <span className="beta-badge">DEMO</span>
+            </div>
+            {connected && walletAddress && (
+              <div className="wallet-info">
+                <span className="wallet-address">
+                  {walletAddress.slice(0, 4)}...{walletAddress.slice(-4)}
+                </span>
+                <button onClick={handleDisconnect} className="btn-disconnect">
+                  Disconnect
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      <main className="main">
+        <div className="container">
+          <div className="hero">
+            <h2 className="title">NFT-Gated Gallery</h2>
+            <p className="subtitle">
+              Connect your Solana wallet to view exclusive NFT content.
+              This demo shows wallet authentication in action.
+            </p>
+          </div>
+
+          {error && (
+            <div className="error-message">
+              <span className="error-icon">✗</span>
+              {error}
+            </div>
+          )}
+
+          {!connected ? (
+            <WalletConnect
+              onConnect={handleConnect}
+              loading={loading}
+            />
+          ) : (
+            <Gallery
+              nfts={nfts}
+              loading={loading}
+              onRefresh={fetchNFTs}
+            />
+          )}
+
+          <div className="features">
+            <div className="feature">
+              <span className="feature-icon">✓</span>
+              <span>No passwords or secrets required</span>
+            </div>
+            <div className="feature">
+              <span className="feature-icon">✓</span>
+              <span>Cryptographic proof of ownership</span>
+            </div>
+            <div className="feature">
+              <span className="feature-icon">✓</span>
+              <span>HTTP 403 challenge-response flow</span>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <footer className="footer">
+        <div className="container">
+          <p>
+            Powered by <strong>OpenKitx403</strong> - HTTP-native wallet authentication
+          </p>
+          <div className="footer-links">
+            <a href="https://github.com/openkitx403/openkitx403" target="_blank" rel="noopener noreferrer">
+              GitHub
+            </a>
+            <a href="https://openkitx403.github.io" target="_blank" rel="noopener noreferrer">
+              Docs
+            </a>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+export default App;
 

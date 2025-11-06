@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
     "@openkitx403/client": "^0.1.0",
@@ -20,3 +21,4 @@
     "vite": "^5.4.21"
   }
 }
+
