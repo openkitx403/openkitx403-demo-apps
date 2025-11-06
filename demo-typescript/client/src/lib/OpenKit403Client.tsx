@@ -153,12 +153,16 @@ export class OpenKit403Client {
     const method = options.method || 'GET';
     const headers = { ...options.headers };
 
-    // Make initial request
+    console.log('🔐 Starting authentication...');
+
+    // Make initial request to get challenge
     const response1 = await fetch(options.resource, {
       method,
       headers,
       body: options.body ? JSON.stringify(options.body) : undefined
     });
+
+    console.log(`GET ${options.resource} ${response1.status}`);
 
     // If not 403 or no challenge, return as-is
     if (response1.status !== 403) {
@@ -168,6 +172,8 @@ export class OpenKit403Client {
         error: response1.ok ? undefined : `HTTP ${response1.status}`
       };
     }
+
+    console.log('✅ Got challenge header');
 
     const wwwAuth = response1.headers.get('WWW-Authenticate');
     if (!wwwAuth || !wwwAuth.startsWith('OpenKitx403')) {
@@ -186,6 +192,8 @@ export class OpenKit403Client {
       };
     }
 
+    console.log('✅ Challenge decoded');
+
     // Connect wallet if needed
     if (!this.walletInstance) {
       try {
@@ -198,10 +206,14 @@ export class OpenKit403Client {
       }
     }
 
+    console.log('📝 Built signing string');
+
     // Sign challenge
     let signed;
     try {
+      console.log('✍️ Requesting signature...');
       signed = await this.signChallenge(parsed.challenge);
+      console.log('✅ Signed');
     } catch (err: any) {
       return {
         ok: false,
@@ -209,15 +221,24 @@ export class OpenKit403Client {
       };
     }
 
-    // Build Authorization header
-    const url = new URL(options.resource);
+    console.log('🔐 Signature encoded (bs58)');
+
+    // CRITICAL FIX: Use challenge's method and path for bind parameter
+    const challengeJson = base64urlDecode(parsed.challenge);
+    const challenge: Challenge = JSON.parse(challengeJson);
+
     const nonce = generateNonce();
     const ts = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
-    const bind = `${method}:${url.pathname}`;
+    
+    // Use challenge's method and path directly, NOT the URL path
+    // This ensures bind matches what the server expects from Express router
+    const bind = `${challenge.method}:${challenge.path}`;
 
     const authHeader = `OpenKitx403 addr="${signed.address}", sig="${signed.signature}", challenge="${parsed.challenge}", ts="${ts}", nonce="${nonce}", bind="${bind}"`;
 
-    // Retry request with auth
+    console.log('🔄 Retrying with auth...');
+    
+    // Retry request with authorization
     const response2 = await fetch(options.resource, {
       method,
       headers: {
@@ -226,6 +247,15 @@ export class OpenKit403Client {
       },
       body: options.body ? JSON.stringify(options.body) : undefined
     });
+
+    console.log(`GET ${options.resource} ${response2.status}`);
+
+    if (response2.ok) {
+      console.log('🎉 SUCCESS!');
+    } else {
+      const errorText = await response2.text();
+      console.error('❌ Failed:', errorText);
+    }
 
     return {
       ok: response2.ok,
