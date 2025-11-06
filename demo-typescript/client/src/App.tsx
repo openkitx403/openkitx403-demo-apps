@@ -1,95 +1,180 @@
+
 import { useState, useEffect } from 'react';
 import { OpenKit403Client } from '@openkitx403/client';
 import WalletConnect from './components/WalletConnect';
 import Gallery from './components/Gallery';
+import './index.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-function App() {
-  const [client] = useState(() => new OpenKit403Client());
-  const [isConnected, setIsConnected] = useState(false);
-  const [address, setAddress] = useState<string>();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string>();
-  const [nfts, setNfts] = useState<any[]>([]);
+interface NFT {
+  id: number;
+  name: string;
+  image: string;
+  description: string;
+  rarity: string;
+  collection: string;
+}
 
-  const connectWallet = async (walletType: 'phantom' | 'backpack' | 'solflare') => {
+function App() {
+  const [client, setClient] = useState<OpenKit403Client | null>(null);
+  const [connected, setConnected] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [nfts, setNfts] = useState<NFT[]>([]);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Initialize client
+    const openKitClient = new OpenKit403Client();
+    setClient(openKitClient);
+  }, []);
+
+  const handleConnect = async (walletType: 'phantom' | 'backpack' | 'solflare') => {
+    if (!client) return;
+
     setLoading(true);
-    setError(undefined);
+    setError(null);
 
     try {
+      // Connect to wallet
       await client.connect(walletType);
-      
-      const result = await client.authenticate({
-        resource: `${API_URL}/api/nfts`,
-        method: 'GET'
-      });
+      const address = client.getAddress();
+      setWalletAddress(address);
+      setConnected(true);
 
-      if (result.ok) {
-        setIsConnected(true);
-        setAddress(result.address);
-        const data = await result.response?.json();
-        setNfts(data.nfts || []);
-      } else {
-        setError(result.error || 'Authentication failed');
-      }
+      // Authenticate and fetch NFTs
+      await fetchNFTs();
     } catch (err: any) {
+      console.error('Connection error:', err);
       setError(err.message || 'Failed to connect wallet');
+      setConnected(false);
     } finally {
       setLoading(false);
     }
   };
 
-  const disconnect = () => {
-    setIsConnected(false);
-    setAddress(undefined);
+  const handleDisconnect = () => {
+    if (client) {
+      client.disconnect();
+    }
+    setConnected(false);
+    setWalletAddress(null);
     setNfts([]);
+    setError(null);
+  };
+
+  const fetchNFTs = async () => {
+    if (!client) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Authenticate with backend using OpenKitx403
+      const response = await client.authenticate({
+        resource: `${API_URL}/api/nfts`,
+        method: 'GET'
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setNfts(data.nfts || []);
+      } else {
+        throw new Error('Failed to fetch NFTs');
+      }
+    } catch (err: any) {
+      console.error('Fetch error:', err);
+      setError(err.message || 'Failed to authenticate and fetch NFTs');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="app">
       <header className="header">
-        <div className="header-content">
-          <div className="logo">
-            <span className="logo-text">OpenKitx403</span>
-            <span className="demo-badge">DEMO</span>
+        <div className="container">
+          <div className="header-content">
+            <div className="logo">
+              <h1>OpenKitx403</h1>
+              <span className="beta-badge">DEMO</span>
+            </div>
+            {connected && walletAddress && (
+              <div className="wallet-info">
+                <span className="wallet-address">
+                  {walletAddress.slice(0, 4)}...{walletAddress.slice(-4)}
+                </span>
+                <button onClick={handleDisconnect} className="btn-disconnect">
+                  Disconnect
+                </button>
+              </div>
+            )}
           </div>
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontFamily: 'JetBrains Mono, monospace' }}>
-            NFT-Gated Gallery
-          </span>
         </div>
       </header>
 
       <main className="main">
-        {error && (
-          <div className="error">
-            ❌ {error}
+        <div className="container">
+          <div className="hero">
+            <h2 className="title">NFT-Gated Gallery</h2>
+            <p className="subtitle">
+              Connect your Solana wallet to view exclusive NFT content. 
+              This demo shows wallet authentication in action.
+            </p>
           </div>
-        )}
 
-        {!isConnected ? (
-          <WalletConnect
-            onConnect={connectWallet}
-            loading={loading}
-          />
-        ) : (
-          <Gallery
-            address={address!}
-            nfts={nfts}
-            onDisconnect={disconnect}
-          />
-        )}
+          {error && (
+            <div className="error-message">
+              <span className="error-icon">✗</span>
+              {error}
+            </div>
+          )}
+
+          {!connected ? (
+            <WalletConnect 
+              onConnect={handleConnect} 
+              loading={loading}
+            />
+          ) : (
+            <Gallery 
+              nfts={nfts} 
+              loading={loading}
+              onRefresh={fetchNFTs}
+            />
+          )}
+
+          <div className="features">
+            <div className="feature">
+              <span className="feature-icon">✓</span>
+              <span>No passwords or secrets required</span>
+            </div>
+            <div className="feature">
+              <span className="feature-icon">✓</span>
+              <span>Cryptographic proof of ownership</span>
+            </div>
+            <div className="feature">
+              <span className="feature-icon">✓</span>
+              <span>HTTP 403 challenge-response flow</span>
+            </div>
+          </div>
+        </div>
       </main>
 
       <footer className="footer">
-        <p className="footer-text">
-          Powered by{' '}
-          <a href="https://github.com/openkitx403" className="footer-link" target="_blank" rel="noopener">
-            OpenKitx403
-          </a>
-          {' · '}
-          HTTP-native wallet authentication for Solana
-        </p>
+        <div className="container">
+          <p>
+            Powered by <strong>OpenKitx403</strong> - HTTP-native wallet authentication
+          </p>
+          <div className="footer-links">
+            <a href="https://github.com/openkitx403/openkitx403" target="_blank" rel="noopener noreferrer">
+              GitHub
+            </a>
+            <a href="https://openkitx403.github.io" target="_blank" rel="noopener noreferrer">
+              Docs
+            </a>
+          </div>
+        </div>
       </footer>
     </div>
   );

@@ -1,39 +1,50 @@
 import NFTCard from './NFTCard';
 
-interface GalleryProps {
-  address: string;
-  nfts: any[];
-  onDisconnect: () => void;
+interface NFT {
+  id: number;
+  name: string;
+  image: string;
+  description: string;
+  rarity: string;
+  collection: string;
 }
 
-export default function Gallery({ address, nfts, onDisconnect }: GalleryProps) {
-  return (
-    <div className="gallery-section">
-      <div className="gallery-header">
-        <div className="wallet-info">
-          <div className="wallet-address">
-            <div className="status-dot"></div>
-            <div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
-                CONNECTED WALLET
-              </div>
-              <div className="wallet-text">
-                {address.slice(0, 4)}...{address.slice(-4)}
-              </div>
-            </div>
-          </div>
-          <button className="disconnect-button" onClick={onDisconnect}>
-            Disconnect
-          </button>
-        </div>
+interface GalleryProps {
+  nfts: NFT[];
+  loading: boolean;
+  onRefresh: () => void;
+}
+
+export default function Gallery({ nfts, loading, onRefresh }: GalleryProps) {
+  if (loading) {
+    return (
+      <div className="gallery-loading">
+        <div className="spinner"></div>
+        <p>Loading your exclusive NFTs...</p>
       </div>
+    );
+  }
 
-      <h2 className="gallery-title">🎨 Exclusive NFT Collection</h2>
-      <p className="gallery-subtitle">
-        These NFTs are only visible to authenticated wallet holders
-      </p>
+  if (nfts.length === 0) {
+    return (
+      <div className="gallery-empty">
+        <p>No NFTs found</p>
+        <button onClick={onRefresh} className="btn-refresh">
+          Refresh
+        </button>
+      </div>
+    );
+  }
 
-      <div className="nft-grid" style={{ marginTop: '2rem' }}>
+  return (
+    <div className="gallery">
+      <div className="gallery-header">
+        <h3>Your Exclusive NFT Collection</h3>
+        <button onClick={onRefresh} className="btn-refresh" disabled={loading}>
+          {loading ? 'Refreshing...' : 'Refresh'}
+        </button>
+      </div>
+      <div className="nft-grid">
         {nfts.map((nft) => (
           <NFTCard key={nft.id} nft={nft} />
         ))}

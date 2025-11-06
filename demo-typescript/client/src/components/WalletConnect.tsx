@@ -5,52 +5,43 @@ interface WalletConnectProps {
 
 export default function WalletConnect({ onConnect, loading }: WalletConnectProps) {
   const wallets = [
-    { id: 'phantom' as const, name: 'Phantom', icon: '👻' },
-    { id: 'backpack' as const, name: 'Backpack', icon: '🎒' },
-    { id: 'solflare' as const, name: 'Solflare', icon: '☀️' },
+    {
+      type: 'phantom' as const,
+      name: 'Phantom',
+      icon: '👻',
+      color: '#AB9FF2'
+    },
+    {
+      type: 'backpack' as const,
+      name: 'Backpack',
+      icon: '🎒',
+      color: '#E84142'
+    },
+    {
+      type: 'solflare' as const,
+      name: 'Solflare',
+      icon: '🌞',
+      color: '#FFA500'
+    }
   ];
 
   return (
-    <div className="connect-section">
-      <h1 className="connect-title">
-        NFT-Gated Gallery
-      </h1>
-      <p className="connect-description">
-        Connect your Solana wallet to view exclusive NFT content.
-        This demo shows wallet authentication in action.
-      </p>
-
+    <div className="wallet-connect">
       <div className="wallet-buttons">
         {wallets.map((wallet) => (
           <button
-            key={wallet.id}
-            className="wallet-button"
-            onClick={() => onConnect(wallet.id)}
+            key={wallet.type}
+            onClick={() => onConnect(wallet.type)}
             disabled={loading}
+            className="btn-wallet"
+            style={{ '--wallet-color': wallet.color } as any}
           >
             <span className="wallet-icon">{wallet.icon}</span>
-            {loading ? 'Connecting...' : `Connect ${wallet.name}`}
+            <span className="wallet-name">
+              {loading ? 'Connecting...' : `Connect ${wallet.name}`}
+            </span>
           </button>
         ))}
-      </div>
-
-      <div className="feature-list">
-        <div className="feature-item">
-          <span className="check-icon">✓</span>
-          <span>No passwords or secrets required</span>
-        </div>
-        <div className="feature-item">
-          <span className="check-icon">✓</span>
-          <span>Cryptographic proof of ownership</span>
-        </div>
-        <div className="feature-item">
-          <span className="check-icon">✓</span>
-          <span>HTTP 403 challenge-response flow</span>
-        </div>
-        <div className="feature-item">
-          <span className="check-icon">✓</span>
-          <span>Works with any Solana wallet</span>
-        </div>
       </div>
     </div>
   );
