@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: openkitx403-trading-bot-api
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: cd demo-python/backend && pip install -r requirements.txt
+    startCommand: cd demo-python/backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PORT
+        value: 8000i
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: ALLOWED_ORIGINS
+        value: http://localhost:8000,https://your-frontend.vercel.app
