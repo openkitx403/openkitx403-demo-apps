@@ -40,6 +40,8 @@ export class OpenKit403Client {
       throw new Error('Wallet not connected');
     }
 
+    console.log('🔐 Starting authentication flow...');
+
     // First request - expect 403 with challenge
     const response1 = await fetch(resource, {
       method,
@@ -48,39 +50,64 @@ export class OpenKit403Client {
       },
     });
 
+    console.log('📡 First response status:', response1.status);
+
     if (response1.status !== 403) {
+      console.log('✅ No authentication required, returning response');
       return response1;
     }
 
     // Parse WWW-Authenticate header
-    const authHeader = response1.headers.get('WWW-Authenticate');
+    const authHeader = response1.headers.get('WWW-Authenticate') || response1.headers.get('www-authenticate');
+    console.log('🔍 WWW-Authenticate header:', authHeader);
+    
     if (!authHeader) {
-      throw new Error('No authentication challenge received');
+      throw new Error('No authentication challenge received from server');
     }
 
-    // Extract challenge: Solana-Wallet challenge="..."
+    // Extract challenge from header
+    // Format: OpenKitx403 realm="...", version="1", challenge="base64challenge"
     const challengeMatch = authHeader.match(/challenge="([^"]+)"/);
     if (!challengeMatch) {
-      throw new Error('Invalid authentication challenge');
+      console.error('❌ Could not parse challenge from:', authHeader);
+      throw new Error('Invalid authentication challenge format');
     }
 
     const challengeB64 = challengeMatch[1];
-    
-    // Decode and sign the challenge
-    const challengeBytes = Uint8Array.from(atob(challengeB64), c => c.charCodeAt(0));
-    const signed = await this.wallet.signMessage(challengeBytes, 'utf8');
+    console.log('🎯 Challenge (base64):', challengeB64.substring(0, 20) + '...');
+
+    // Create message to sign
+    const message = new TextEncoder().encode(challengeB64);
+    console.log('✍️ Requesting wallet signature...');
+
+    // Sign with wallet
+    const signed = await this.wallet.signMessage(message, 'utf8');
+    console.log('✅ Message signed');
 
     // Encode signature as base64
     const signatureB64 = btoa(String.fromCharCode(...signed.signature));
+    console.log('🔐 Signature (base64):', signatureB64.substring(0, 20) + '...');
+
+    // Build Authorization header
+    const authValue = `Solana-Wallet address="${this.wallet.publicKey.toString()}", signature="${signatureB64}", nonce="${challengeB64}"`;
+    console.log('📤 Retrying with Authorization header...');
 
     // Retry with Authorization header
     const response2 = await fetch(resource, {
       method,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Solana-Wallet address="${this.wallet.publicKey.toString()}", signature="${signatureB64}", nonce="${challengeB64}"`,
+        'Authorization': authValue,
       },
     });
+
+    console.log('📡 Second response status:', response2.status);
+
+    if (response2.ok) {
+      console.log('🎉 Authentication successful!');
+    } else {
+      console.error('❌ Authentication failed:', response2.status);
+    }
 
     return response2;
   }
