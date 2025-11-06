@@ -41,7 +41,6 @@ interface SolanaWallet {
   isConnected?: boolean;
 }
 
-// Browser-safe utility functions
 function base64urlDecode(str: string): string {
   const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
   const padding = (4 - (base64.length % 4)) % 4;
@@ -149,7 +148,7 @@ export class OpenKit403Client {
     };
   }
 
-  async authenticate(options: AuthOptions): Promise<AuthResult> {
+  async authenticate(options: AuthOptions): Promise<Response> {
     const method = options.method || 'GET';
     const headers = { ...options.headers };
 
@@ -164,32 +163,24 @@ export class OpenKit403Client {
 
     console.log(`GET ${options.resource} ${response1.status}`);
 
-    // If not 403 or no challenge, return as-is
+    // If not 403, return response as-is
     if (response1.status !== 403) {
-      return {
-        ok: response1.ok,
-        response: response1,
-        error: response1.ok ? undefined : `HTTP ${response1.status}`
-      };
+      console.log('No challenge needed, returning response');
+      return response1;
     }
 
     console.log('✅ Got challenge header');
 
     const wwwAuth = response1.headers.get('WWW-Authenticate');
     if (!wwwAuth || !wwwAuth.startsWith('OpenKitx403')) {
-      return {
-        ok: false,
-        response: response1,
-        error: 'No OpenKitx403 challenge found'
-      };
+      console.error('No OpenKitx403 challenge found');
+      return response1;
     }
 
     const parsed = parseWWWAuthenticate(wwwAuth);
     if (!parsed) {
-      return {
-        ok: false,
-        error: 'Failed to parse challenge'
-      };
+      console.error('Failed to parse challenge');
+      return response1;
     }
 
     console.log('✅ Challenge decoded');
@@ -199,10 +190,8 @@ export class OpenKit403Client {
       try {
         await this.connect(options.wallet);
       } catch (err: any) {
-        return {
-          ok: false,
-          error: `Wallet connection failed: ${err.message}`
-        };
+        console.error('Wallet connection failed:', err);
+        return response1;
       }
     }
 
@@ -215,10 +204,8 @@ export class OpenKit403Client {
       signed = await this.signChallenge(parsed.challenge);
       console.log('✅ Signed');
     } catch (err: any) {
-      return {
-        ok: false,
-        error: `Signature failed: ${err.message}`
-      };
+      console.error('Signature failed:', err);
+      return response1;
     }
 
     console.log('🔐 Signature encoded (bs58)');
@@ -230,8 +217,7 @@ export class OpenKit403Client {
     const nonce = generateNonce();
     const ts = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
     
-    // Use challenge's method and path directly, NOT the URL path
-    // This ensures bind matches what the server expects from Express router
+    // Use challenge's method and path directly
     const bind = `${challenge.method}:${challenge.path}`;
 
     const authHeader = `OpenKitx403 addr="${signed.address}", sig="${signed.signature}", challenge="${parsed.challenge}", ts="${ts}", nonce="${nonce}", bind="${bind}"`;
@@ -253,17 +239,10 @@ export class OpenKit403Client {
     if (response2.ok) {
       console.log('🎉 SUCCESS!');
     } else {
-      const errorText = await response2.text();
-      console.error('❌ Failed:', errorText);
+      console.error('❌ Failed:', response2.status);
     }
 
-    return {
-      ok: response2.ok,
-      address: signed.address,
-      challenge: parsed.challenge,
-      response: response2,
-      error: response2.ok ? undefined : `Authentication failed: HTTP ${response2.status}`
-    };
+    return response2;
   }
 
   getAddress(): string {
