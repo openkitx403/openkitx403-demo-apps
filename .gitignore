@@ -26,7 +26,6 @@ pnpm-lock.yaml
 dist/
 build/
 out/
-lib/
 .esm/
 .cjs/
 .temp/
