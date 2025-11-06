@@ -39,7 +39,6 @@ export class OpenKit403Client {
   }
 
   private buildSigningString(challenge: any): string {
-    // CRITICAL: This must match the server's buildSigningString exactly
     const lines = [
       'OpenKitx403 Challenge',
       '',
@@ -50,7 +49,6 @@ export class OpenKit403Client {
       `method: ${challenge.method}`,
       `path: ${challenge.path}`,
       '',
-      // FIXED: Ensure JSON is serialized with sorted keys exactly as server expects
       `payload: ${JSON.stringify(challenge, Object.keys(challenge).sort())}`
     ];
 
@@ -121,11 +119,12 @@ export class OpenKit403Client {
     const signatureBS58 = bs58.encode(signed.signature);
     console.log('🔐 Signature encoded (bs58)');
 
-    // Build Authorization header with bind parameter matching method:path
+    // CRITICAL FIX: Use the challenge's method and path for bind parameter
     const clientNonce = this.generateNonce();
     const clientTs = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
-    const url = new URL(resource);
-    const bind = `${method}:${url.pathname}`;
+    
+    // Use method and path from the CHALLENGE, not from the request
+    const bind = `${challenge.method}:${challenge.path}`;
 
     const authValue = `OpenKitx403 addr="${this.wallet.publicKey}", sig="${signatureBS58}", challenge="${challengeEncoded}", ts="${clientTs}", nonce="${clientNonce}", bind="${bind}"`;
 
