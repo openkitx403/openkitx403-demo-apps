@@ -1,11 +1,19 @@
 import express from 'express';
 import cors from 'cors';
 import { createOpenKit403, inMemoryLRU } from '@openkitx403/server';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const app = express();
-const PORT = 3000;
 
-app.use(cors({ origin: 'http://localhost:5173' }));
+const PORT = process.env.PORT || 3000;
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5173'];
+
+
+app.use(cors({ 
+  origin: ALLOWED_ORIGINS,
+  credentials: true 
+}));
 app.use(express.json());
 
 const openkit = createOpenKit403({
@@ -96,7 +104,6 @@ protectedRouter.get('/nfts', (req, res) => {
 
 app.use('/api', protectedRouter);
 
-app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
-  console.log(`📱 Client should be running on http://localhost:5173`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Server running on port ${PORT}`);
 });
