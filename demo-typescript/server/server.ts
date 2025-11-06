@@ -12,7 +12,6 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(',') || [
   'https://openkitx403-demo-apps.vercel.app'
 ];
 
-// CORS Configuration
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
@@ -30,7 +29,6 @@ app.use(cors({
 
 app.use(express.json());
 
-// Initialize OpenKit403 with fixed package
 const openkit = createOpenKit403({
   issuer: 'nft-gallery-demo',
   audience: process.env.AUDIENCE || 'https://openkitx403-nft-gallery-api.onrender.com',
@@ -47,24 +45,19 @@ interface OpenKitRequest extends Request {
   };
 }
 
-// Health check endpoint
 app.get('/', (req: Request, res: Response) => {
   res.json({
     message: 'OpenKitx403 NFT Gallery Demo API',
     status: 'running',
     endpoints: {
-      nfts: '/api/nfts (protected with wallet auth)'
+      nfts: '/api/nfts (protected)'
     }
   });
 });
 
-// Protected routes using OpenKit403 middleware
 const protectedRouter = express.Router();
-
-// Apply OpenKit403 middleware to all protected routes
 protectedRouter.use(openkit.middleware());
 
-// NFT Gallery endpoint
 protectedRouter.get('/nfts', (req: OpenKitRequest, res: Response) => {
   const user = req.openkitx403User;
 
@@ -127,25 +120,11 @@ protectedRouter.get('/nfts', (req: OpenKitRequest, res: Response) => {
   });
 });
 
-// Mount protected routes
 app.use('/api', protectedRouter);
 
-// 404 handler
-app.use((req: Request, res: Response) => {
-  res.status(404).json({ error: 'Not found' });
-});
-
-// Error handling middleware
-app.use((err: any, req: Request, res: Response, next: Function) => {
-  console.error('Error:', err);
-  res.status(500).json({ error: 'Internal server error' });
-});
-
-// Start server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`📱 CORS origins: ${ALLOWED_ORIGINS.join(', ')}`);
-  console.log(`🔐 Using official @openkitx403/server package (v0.1.1+)`);
-  console.log(`🎯 Protected endpoints: /api/*`);
+  console.log(`🔐 Using @openkitx403/server@0.1.3`);
 });
 
