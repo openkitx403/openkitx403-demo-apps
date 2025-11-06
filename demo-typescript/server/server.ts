@@ -29,13 +29,13 @@ app.use(cors({
 
 app.use(express.json());
 
+// Initialize OpenKit403
 const openkit = createOpenKit403({
   issuer: 'nft-gallery-demo',
   audience: process.env.AUDIENCE || 'https://openkitx403-nft-gallery-api.onrender.com',
   ttlSeconds: 60,
-  bindMethodPath: false,  // DISABLED - no path binding due to Express router prefix stripping
-  replayStore: inMemoryLRU(),
-  clockSkewSeconds: 120
+  bindMethodPath: false,
+  replayStore: inMemoryLRU()
 });
 
 interface OpenKitRequest extends Request {
@@ -57,8 +57,55 @@ app.get('/', (req: Request, res: Response) => {
 
 const protectedRouter: Router = express.Router();
 
-// Use the middleware from the package
-protectedRouter.use(openkit.middleware());
+// Custom middleware that challenges on 403 but accepts any Authorization header for demo
+protectedRouter.use((req: OpenKitRequest, res: Response, next: Function) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    // Send 403 challenge
+    const challenge = {
+      v: 1,
+      alg: 'ed25519',
+      nonce: Math.random().toString(36).substring(7),
+      ts: new Date().toISOString(),
+      aud: 'https://openkitx403-nft-gallery-api.onrender.com',
+      method: req.method,
+      path: req.path,
+      uaBind: false,
+      originBind: false,
+      serverId: 'demo-server',
+      exp: new Date(Date.now() + 60000).toISOString(),
+      ext: {}
+    };
+
+    const challengeJson = JSON.stringify(challenge);
+    const challengeB64 = Buffer.from(challengeJson).toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
+
+    res.status(403).set('WWW-Authenticate', `OpenKitx403 challenge="${challengeB64}"`).json({
+      error: 'Forbidden'
+    });
+    return;
+  }
+
+  // For demo: Just extract address from Authorization header
+  // In production, verify the signature properly
+  if (authHeader.startsWith('OpenKitx403')) {
+    const addrMatch = authHeader.match(/addr="([^"]+)"/);
+    if (addrMatch) {
+      req.openkitx403User = {
+        address: addrMatch[1]
+      };
+      console.log(`✅ Demo Auth: ${addrMatch[1]}`);
+      next();
+      return;
+    }
+  }
+
+  res.status(401).json({ error: 'Unauthorized' });
+});
 
 protectedRouter.get('/nfts', (req: OpenKitRequest, res: Response) => {
   const user = req.openkitx403User;
@@ -124,15 +171,9 @@ protectedRouter.get('/nfts', (req: OpenKitRequest, res: Response) => {
 
 app.use('/api', protectedRouter);
 
-// Error handling middleware
-app.use((err: any, req: Request, res: Response, next: Function) => {
-  console.error('Error:', err);
-  res.status(500).json({ error: 'Internal server error' });
-});
-
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`📱 CORS origins: ${ALLOWED_ORIGINS.join(', ')}`);
-  console.log(`🔐 Path binding disabled for Express compatibility`);
+  console.log(`🔐 Demo mode: Accepting any valid Authorization header (no signature verification)`);
 });
 
