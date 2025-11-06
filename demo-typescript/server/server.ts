@@ -12,7 +12,6 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(',') || [
   'https://openkitx403-demo-apps.vercel.app'
 ];
 
-// FIXED: Added exposedHeaders
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
@@ -25,7 +24,7 @@ app.use(cors({
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  exposedHeaders: ['WWW-Authenticate']  // THIS IS THE FIX!
+  exposedHeaders: ['WWW-Authenticate']
 }));
 
 app.use(express.json());
@@ -34,8 +33,9 @@ const openkit = createOpenKit403({
   issuer: 'nft-gallery-demo',
   audience: process.env.AUDIENCE || 'https://openkitx403-nft-gallery-api.onrender.com',
   ttlSeconds: 60,
-  bindMethodPath: true,
-  replayStore: inMemoryLRU()
+  bindMethodPath: false,  // DISABLED - no path binding due to Express router prefix stripping
+  replayStore: inMemoryLRU(),
+  clockSkewSeconds: 120
 });
 
 interface OpenKitRequest extends Request {
@@ -56,11 +56,13 @@ app.get('/', (req: Request, res: Response) => {
 });
 
 const protectedRouter: Router = express.Router();
+
+// Use the middleware from the package
 protectedRouter.use(openkit.middleware());
 
 protectedRouter.get('/nfts', (req: OpenKitRequest, res: Response) => {
   const user = req.openkitx403User;
-  
+
   const nfts = [
     {
       id: 1,
@@ -122,7 +124,15 @@ protectedRouter.get('/nfts', (req: OpenKitRequest, res: Response) => {
 
 app.use('/api', protectedRouter);
 
+// Error handling middleware
+app.use((err: any, req: Request, res: Response, next: Function) => {
+  console.error('Error:', err);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`📱 CORS origins: ${ALLOWED_ORIGINS.join(', ')}`);
+  console.log(`🔐 Path binding disabled for Express compatibility`);
 });
+
