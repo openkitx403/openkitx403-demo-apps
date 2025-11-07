@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { OpenKit403Client } from './lib/OpenKit403Client';
+import { OpenKit403Client } from '@openkitx403/client';
 import WalletConnect from './components/WalletConnect';
 import Gallery from './components/Gallery';
 import './index.css';
