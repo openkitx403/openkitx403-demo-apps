@@ -1,14 +1,14 @@
 /**
  * OpenKitx403 Trading Bot Dashboard
- * Production-grade client for real-time bot monitoring
- * Optimized for clean, minimal UI
+ * Production-grade client with real-time crypto prices from CoinGecko
  */
 
 // ====== Configuration ======
 const CONFIG = {
   API_URL: 'https://openkitx403-demo-app-py.onrender.com',
+  COINGECKO_API: 'https://api.coingecko.com/api/v3',
   WS_RECONNECT_DELAY: 3000,
-  PRICE_UPDATE_INTERVAL: 5000,
+  PRICE_UPDATE_INTERVAL: 10000, // 10 seconds
   ACTIVITY_MAX_ITEMS: 15,
   ANIMATION_DURATION: 300,
 };
@@ -240,22 +240,49 @@ function createActivityElement(activity) {
 }
 
 /**
- * Fetch and update market prices
+ * Fetch real crypto prices from CoinGecko (FREE, NO AUTH)
  */
 async function updatePrices() {
   try {
-    // Mock prices - replace with real API call if needed
-    const mockPrices = {
+    const response = await fetch(
+      `${CONFIG.COINGECKO_API}/simple/price?ids=solana,bitcoin,ethereum&vs_currencies=usd&include_market_cap=false&include_24hr_vol=false&include_24hr_change=false`,
+      {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`CoinGecko API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // Update state with real prices
+    state.prices = {
+      SOL: data.solana?.usd?.toFixed(2) || '0.00',
+      BTC: data.bitcoin?.usd?.toFixed(2) || '0.00',
+      ETH: data.ethereum?.usd?.toFixed(2) || '0.00',
+      USDC: '1.00',
+    };
+
+    renderPrices();
+    console.log('[Prices] Updated from CoinGecko:', state.prices);
+  } catch (error) {
+    console.error('[Prices] CoinGecko fetch failed:', error);
+    
+    // Fallback to realistic mock data if API fails
+    state.prices = {
       SOL: (95 + Math.random() * 10).toFixed(2),
       BTC: (42000 + Math.random() * 1000).toFixed(2),
       ETH: (2200 + Math.random() * 100).toFixed(2),
       USDC: '1.00',
     };
-
-    state.prices = mockPrices;
+    
     renderPrices();
-  } catch (error) {
-    console.error('[Prices] Update failed:', error);
+    console.log('[Prices] Using fallback mock data');
   }
 }
 
@@ -279,7 +306,7 @@ function renderPrices() {
 }
 
 /**
- * Format number as currency
+ * Format number as currency with K/M abbreviations
  * @param {number|string} value - Value to format
  * @returns {string} Formatted currency
  */
@@ -359,6 +386,10 @@ function setupClipboardHandlers() {
 function startPriceUpdates() {
   if (state.priceUpdateTimer) clearInterval(state.priceUpdateTimer);
 
+  // Update immediately
+  updatePrices();
+
+  // Then update at interval
   state.priceUpdateTimer = setInterval(updatePrices, CONFIG.PRICE_UPDATE_INTERVAL);
 }
 
@@ -381,10 +412,9 @@ function initialize() {
   initDOM();
   setupClipboardHandlers();
   connectWebSocket();
-  updatePrices();
   startPriceUpdates();
 
-  console.log('[App] Ready');
+  console.log('[App] Ready - Real-time prices from CoinGecko');
 }
 
 /**
@@ -416,7 +446,6 @@ function handleVisibilityChange() {
   } else {
     console.log('[App] Page visible');
     startPriceUpdates();
-    updatePrices();
   }
 }
 
@@ -445,22 +474,26 @@ window.addEventListener('unhandledrejection', (event) => {
 });
 
 // ====== Debugging (development only) ======
-if (process.env.NODE_ENV !== 'production') {
-  window.debugState = () => ({
-    connected: state.isConnected,
-    bots: Array.from(state.activeBots),
-    trades: state.totalTrades,
-    volume: state.totalVolume,
-  });
+window.debugState = () => ({
+  connected: state.isConnected,
+  bots: Array.from(state.activeBots),
+  trades: state.totalTrades,
+  volume: state.totalVolume,
+  prices: state.prices,
+});
 
-  window.debugReset = () => {
-    state.totalTrades = 0;
-    state.totalVolume = 0;
-    state.activeBots.clear();
-    updateStats();
-    console.log('[Debug] State reset');
-  };
+window.debugReset = () => {
+  state.totalTrades = 0;
+  state.totalVolume = 0;
+  state.activeBots.clear();
+  updateStats();
+  console.log('[Debug] State reset');
+};
 
-  console.log('[Debug] Use window.debugState() and window.debugReset()');
-}
+window.debugPrices = () => {
+  console.log('[Debug] Fetching prices...');
+  updatePrices();
+};
+
+console.log('[Debug] Use window.debugState(), window.debugReset(), window.debugPrices()');
 
