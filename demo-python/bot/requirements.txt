@@ -1,4 +1,3 @@
-openkitx403-client==0.1.0
-solders==0.18.1
-requests==2.31.0
-
+openkitx403-client==0.1.1
+solders>=0.18.1
+requests>=2.31.0
