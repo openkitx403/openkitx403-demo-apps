@@ -1,4 +1,4 @@
-# OpenKitx403 TypeScript Demo - NFT Gallery
+# OpenKitx403 TypeScript Demo - NFT Gallery App
 
 Live demo showing wallet authentication with NFT-gated content.
 
