@@ -9,7 +9,8 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(',') || [
   'http://localhost:5173',
-  'https://openkitx403-demo-apps.vercel.app'
+  'https://openkitx403-demo-apps.vercel.app',
+  'https://openkitx403-ts.netlify.app'
 ];
 
 app.use(cors({
