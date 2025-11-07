@@ -179,7 +179,7 @@ function App() {
                 GitHub
               </a>
               <a 
-                href="https://openkitx403.github.io" 
+                href="https://openkitx403.github.io/openkitx403-docs" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="footer-link"
