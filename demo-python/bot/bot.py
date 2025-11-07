@@ -2,11 +2,12 @@
 import json
 import time
 import random
+import os
 from datetime import datetime
 from solana.keypair import Keypair
 from openkitx403_client import OpenKit403Client
 
-# Colors for terminal output
+
 class Colors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -17,25 +18,26 @@ class Colors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
 
+
 def print_header(text):
     print(f"\n{Colors.HEADER}{Colors.BOLD}{'='*60}{Colors.ENDC}")
     print(f"{Colors.HEADER}{Colors.BOLD}{text:^60}{Colors.ENDC}")
     print(f"{Colors.HEADER}{Colors.BOLD}{'='*60}{Colors.ENDC}\n")
 
+
 def print_success(text):
     print(f"{Colors.OKGREEN}✓ {text}{Colors.ENDC}")
+
 
 def print_info(text):
     print(f"{Colors.OKCYAN}ℹ {text}{Colors.ENDC}")
 
-def print_warning(text):
-    print(f"{Colors.WARNING}⚠ {text}{Colors.ENDC}")
 
 def print_error(text):
     print(f"{Colors.FAIL}✗ {text}{Colors.ENDC}")
 
+
 def load_keypair(filepath: str = './keypair.json') -> Keypair:
-    """Load Solana keypair from JSON file"""
     try:
         with open(filepath, 'r') as f:
             secret_key = json.load(f)
@@ -45,16 +47,16 @@ def load_keypair(filepath: str = './keypair.json') -> Keypair:
         print_info("Generate a keypair with: solana-keygen new --outfile keypair.json")
         exit(1)
 
+
 class TradingBot:
-    def __init__(self, keypair: Keypair, api_url: str = "http://localhost:8000"):
+    def __init__(self, keypair: Keypair, api_url: str = None):
         self.keypair = keypair
-        self.api_url = api_url
+        self.api_url = api_url or os.getenv("API_URL", "http://localhost:8000")
         self.client = OpenKit403Client(keypair)
         self.bot_id = None
         self.running = True
         
     def register(self):
-        """Register bot with the API"""
         print_info("Registering bot...")
         response = self.client.authenticate(
             f"{self.api_url}/api/bot/register",
@@ -66,7 +68,6 @@ class TradingBot:
         print_info(f"Wallet: {data['address']}")
         
     def get_prices(self):
-        """Fetch current market prices"""
         response = self.client.authenticate(
             f"{self.api_url}/api/market/prices",
             method='GET'
@@ -74,7 +75,6 @@ class TradingBot:
         return response.json()
     
     def execute_trade(self, trade_type: str, asset: str, amount: float, price: float):
-        """Execute a trade"""
         trade_data = {
             "type": trade_type,
             "asset": asset,
@@ -90,7 +90,6 @@ class TradingBot:
         return response.json()
     
     def get_status(self):
-        """Get bot status"""
         response = self.client.authenticate(
             f"{self.api_url}/api/bot/status",
             method='GET'
@@ -98,12 +97,10 @@ class TradingBot:
         return response.json()
     
     def trading_strategy(self, prices: dict):
-        """Simple mock trading strategy"""
         assets = ["SOL", "BTC", "ETH"]
         asset = random.choice(assets)
         price = prices["prices"][asset]
         
-        # Random decision to buy or sell
         if random.random() > 0.5:
             trade_type = "buy"
             amount = round(random.uniform(0.1, 2.0), 2)
@@ -116,11 +113,9 @@ class TradingBot:
         return trade_type, asset, amount, price
     
     def run(self):
-        """Main bot loop"""
         print_header("🤖 SOLANA TRADING BOT")
         
         try:
-            # Register bot
             self.register()
             print()
             
@@ -129,7 +124,6 @@ class TradingBot:
                 cycle += 1
                 print_header(f"CYCLE #{cycle} - {datetime.now().strftime('%H:%M:%S')}")
                 
-                # 1. Fetch prices
                 print_info("Fetching market prices...")
                 prices_data = self.get_prices()
                 print_success("Market data received")
@@ -137,7 +131,6 @@ class TradingBot:
                     print(f"  {asset}: ${price:,.2f}")
                 print()
                 
-                # 2. Execute trading strategy
                 print_info("Analyzing market...")
                 time.sleep(1)
                 trade_type, asset, amount, price = self.trading_strategy(prices_data)
@@ -154,7 +147,6 @@ class TradingBot:
                     print(f"  Total: ${amount * price:,.2f}")
                 print()
                 
-                # 3. Check bot status
                 print_info("Checking bot status...")
                 status = self.get_status()
                 print_success("Status retrieved")
@@ -162,26 +154,25 @@ class TradingBot:
                 print(f"  Total Volume: ${status['stats']['total_volume']:,.2f}")
                 print()
                 
-                # Wait before next cycle
                 wait_time = random.randint(10, 20)
                 print_info(f"Waiting {wait_time} seconds before next cycle...")
                 time.sleep(wait_time)
                 
         except KeyboardInterrupt:
-            print_warning("\n\nBot stopped by user")
+            print(f"\n{Colors.WARNING}Bot stopped by user{Colors.ENDC}")
         except Exception as e:
             print_error(f"Error: {e}")
         finally:
             print_header("BOT SHUTDOWN")
             print_success("Bot stopped successfully")
 
+
 def main():
-    # Load keypair
     keypair = load_keypair()
-    
-    # Create and run bot
     bot = TradingBot(keypair)
     bot.run()
 
+
 if __name__ == "__main__":
     main()
+

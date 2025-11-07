@@ -32,7 +32,6 @@ body {
   flex-direction: column;
 }
 
-/* Header */
 .header {
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
@@ -100,7 +99,6 @@ body {
   50% { opacity: 0.5; }
 }
 
-/* Main */
 .main {
   flex: 1;
   max-width: 1400px;
@@ -109,7 +107,6 @@ body {
   padding: 3rem 2rem;
 }
 
-/* Hero Section */
 .hero-section {
   text-align: center;
   margin-bottom: 4rem;
@@ -166,7 +163,6 @@ body {
   letter-spacing: 0.05em;
 }
 
-/* Section */
 .section {
   margin-bottom: 3rem;
 }
@@ -176,12 +172,8 @@ body {
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
 }
 
-/* Price Grid */
 .price-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -217,7 +209,6 @@ body {
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* Activity Feed */
 .activity-feed {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
@@ -327,7 +318,6 @@ body {
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* Instructions */
 .instructions-card {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
@@ -389,7 +379,6 @@ body {
   overflow-x: auto;
 }
 
-/* Footer */
 .footer {
   background: var(--bg-secondary);
   border-top: 1px solid var(--border);
@@ -415,7 +404,6 @@ body {
   text-decoration: underline;
 }
 
-/* Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -429,7 +417,6 @@ body {
   border-radius: 4px;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .hero-title {
     font-size: 2rem;
@@ -453,3 +440,4 @@ body {
     text-align: left;
   }
 }
+

@@ -1,17 +1,13 @@
 const API_URL = 'https://openkitx403-demo-app-py.onrender.com';
 const WS_URL = API_URL.replace('https', 'wss');
 
-// WebSocket connection
 let ws = null;
 let reconnectTimer = null;
-
-// State
 let activeBots = new Set();
 let totalTrades = 0;
 let totalVolume = 0;
 let prices = {};
 
-// Connect to WebSocket
 function connectWebSocket() {
     ws = new WebSocket(`${WS_URL}/ws`);
 
@@ -28,8 +24,6 @@ function connectWebSocket() {
     ws.onclose = () => {
         console.log('WebSocket disconnected');
         updateStatus(false);
-        
-        // Reconnect after 3 seconds
         reconnectTimer = setTimeout(() => {
             connectWebSocket();
         }, 3000);
@@ -40,13 +34,11 @@ function connectWebSocket() {
     };
 }
 
-// Handle WebSocket messages
 function handleWebSocketMessage(data) {
     switch (data.type) {
         case 'bot_connected':
             activeBots.add(data.bot_id);
             updateStats();
-            addNotification(`Bot ${data.bot_id} connected`);
             break;
             
         case 'trade_executed':
@@ -58,7 +50,6 @@ function handleWebSocketMessage(data) {
     }
 }
 
-// Update connection status
 function updateStatus(connected) {
     const dot = document.getElementById('statusDot');
     const text = document.getElementById('statusText');
@@ -74,28 +65,23 @@ function updateStatus(connected) {
     }
 }
 
-// Update stats
 function updateStats() {
     document.getElementById('totalBots').textContent = activeBots.size;
     document.getElementById('totalTrades').textContent = totalTrades;
     document.getElementById('totalVolume').textContent = `$${totalVolume.toFixed(2)}`;
 }
 
-// Add activity to feed
 function addActivity(activity) {
     const feed = document.getElementById('activityFeed');
     
-    // Remove empty state
     const emptyState = feed.querySelector('.empty-state');
     if (emptyState) {
         emptyState.remove();
     }
     
-    // Create activity item
     const item = document.createElement('div');
     item.className = 'activity-item';
     
-    const timeAgo = 'Just now';
     const total = (activity.amount * activity.price).toFixed(2);
     
     item.innerHTML = `
@@ -110,23 +96,19 @@ function addActivity(activity) {
         </div>
         <div class="activity-side">
             <div class="activity-amount">$${total}</div>
-            <div class="activity-time">${timeAgo}</div>
+            <div class="activity-time">Just now</div>
         </div>
     `;
     
-    // Add to top of feed
     feed.insertBefore(item, feed.firstChild);
     
-    // Keep only last 20 items
     const items = feed.querySelectorAll('.activity-item');
     if (items.length > 20) {
         items[items.length - 1].remove();
     }
 }
 
-// Fetch and update prices
 async function updatePrices() {
-    // Mock prices for demo
     const mockPrices = {
         'SOL': (95 + Math.random() * 10).toFixed(2),
         'BTC': (42000 + Math.random() * 1000).toFixed(2),
@@ -138,7 +120,6 @@ async function updatePrices() {
     renderPrices();
 }
 
-// Render prices
 function renderPrices() {
     const grid = document.getElementById('priceGrid');
     grid.innerHTML = '';
@@ -154,26 +135,14 @@ function renderPrices() {
     });
 }
 
-// Add notification
-function addNotification(message) {
-    console.log('📢', message);
-}
-
-// Initialize
 document.addEventListener('DOMContentLoaded', () => {
     connectWebSocket();
     updatePrices();
-    
-    // Update prices every 5 seconds
     setInterval(updatePrices, 5000);
 });
 
-// Cleanup on page unload
 window.addEventListener('beforeunload', () => {
-    if (ws) {
-        ws.close();
-    }
-    if (reconnectTimer) {
-        clearTimeout(reconnectTimer);
-    }
+    if (ws) ws.close();
+    if (reconnectTimer) clearTimeout(reconnectTimer);
 });
+
