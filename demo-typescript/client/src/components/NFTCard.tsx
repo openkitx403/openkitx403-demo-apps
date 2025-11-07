@@ -12,37 +12,23 @@ interface NFTCardProps {
 }
 
 export default function NFTCard({ nft }: NFTCardProps) {
-  const getRarityColor = (rarity: string) => {
-    const colors: Record<string, string> = {
-      'Legendary': '#FFD700',
-      'Epic': '#9945FF',
-      'Rare': '#14F195',
-      'Uncommon': '#00D4FF',
-      'Common': '#808080'
-    };
-    return colors[rarity] || '#808080';
-  };
-
   return (
     <div className="nft-card">
-      <div className="nft-image-container">
+      <div className="nft-image-wrapper">
         <img 
           src={nft.image} 
           alt={nft.name}
           className="nft-image"
+          loading="lazy"
         />
-        <div 
-          className="nft-rarity"
-          style={{ backgroundColor: getRarityColor(nft.rarity) }}
-        >
-          {nft.rarity}
-        </div>
+        <div className="nft-rarity">{nft.rarity}</div>
       </div>
-      <div className="nft-content">
-        <h4 className="nft-name">{nft.name}</h4>
+      <div className="nft-body">
+        <h4 className="nft-title">{nft.name}</h4>
         <p className="nft-collection">{nft.collection}</p>
         <p className="nft-description">{nft.description}</p>
       </div>
     </div>
   );
 }
+

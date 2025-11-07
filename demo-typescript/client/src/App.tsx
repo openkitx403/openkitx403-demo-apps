@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { OpenKit403Client } from '@openkitx403/client';
 import WalletConnect from './components/WalletConnect';
 import Gallery from './components/Gallery';
+import ErrorAlert from './components/ErrorAlert';
 import './index.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -39,7 +40,6 @@ function App() {
       const address = client.getAddress();
       setWalletAddress(address);
       setConnected(true);
-
       await fetchNFTs();
     } catch (err: any) {
       console.error('Connection error:', err);
@@ -77,16 +77,12 @@ function App() {
       }
 
       const data = await response.json();
-      console.log('NFT Response:', data);
 
       if (data && Array.isArray(data.nfts)) {
         setNfts(data.nfts);
-        console.log(`Loaded ${data.nfts.length} NFTs`);
       } else if (Array.isArray(data)) {
         setNfts(data);
-        console.log(`Loaded ${data.length} NFTs`);
       } else {
-        console.warn('Unexpected response format:', data);
         setNfts([]);
         setError('Could not parse NFT data');
       }
@@ -105,15 +101,19 @@ function App() {
         <div className="container">
           <div className="header-content">
             <div className="logo">
-              <h1>OpenKitx403</h1>
-              <span className="beta-badge">DEMO</span>
+              <h1 className="logo-text">OpenKitx403</h1>
+              <span className="badge">DEMO</span>
             </div>
             {connected && walletAddress && (
               <div className="wallet-info">
                 <span className="wallet-address">
-                  {walletAddress.slice(0, 4)}...{walletAddress.slice(-4)}
+                  {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
                 </span>
-                <button onClick={handleDisconnect} className="btn-disconnect">
+                <button 
+                  onClick={handleDisconnect} 
+                  className="btn btn-secondary"
+                  aria-label="Disconnect wallet"
+                >
                   Disconnect
                 </button>
               </div>
@@ -125,45 +125,39 @@ function App() {
       <main className="main">
         <div className="container">
           <div className="hero">
-            <h2 className="title">NFT-Gated Gallery</h2>
-            <p className="subtitle">
-              Connect your Solana wallet to view exclusive NFT content.
-              This demo shows wallet authentication in action.
+            <h2 className="hero-title">NFT-Gated Gallery</h2>
+            <p className="hero-subtitle">
+              Connect your Solana wallet to authenticate and view exclusive content.
+              Demonstrates HTTP 403 challenge-response authentication.
             </p>
           </div>
 
-          {error && (
-            <div className="error-message">
-              <span className="error-icon">✗</span>
-              {error}
-            </div>
-          )}
+          {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
 
           {!connected ? (
-            <WalletConnect
-              onConnect={handleConnect}
-              loading={loading}
-            />
+            <WalletConnect onConnect={handleConnect} loading={loading} />
           ) : (
-            <Gallery
-              nfts={nfts}
-              loading={loading}
-              onRefresh={fetchNFTs}
-            />
+            <Gallery nfts={nfts} loading={loading} onRefresh={fetchNFTs} />
           )}
 
           <div className="features">
-            <div className="feature">
-              <span className="feature-icon">✓</span>
-              <span>No passwords or secrets required</span>
-            </div>
-            <div className="feature">
-              <span className="feature-icon">✓</span>
+            <div className="feature-item">
+              <svg className="feature-icon" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
               <span>Cryptographic proof of ownership</span>
             </div>
-            <div className="feature">
-              <span className="feature-icon">✓</span>
-              <span>HTTP 403 challenge-response flow</span>
+            <div className="feature-item">
+              <svg className="feature-icon" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <span>No passwords or private keys</span>
+            </div>
+            <div className="feature-item">
+              <svg className="feature-icon" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <span>HTTP-native authentication flow</span>
             </div>
           </div>
         </div>
@@ -171,16 +165,28 @@ function App() {
 
       <footer className="footer">
         <div className="container">
-          <p>
-            Powered by <strong>OpenKitx403</strong> - HTTP-native wallet authentication
-          </p>
-          <div className="footer-links">
-            <a href="https://github.com/openkitx403/openkitx403" target="_blank" rel="noopener noreferrer">
-              GitHub
-            </a>
-            <a href="https://openkitx403.github.io" target="_blank" rel="noopener noreferrer">
-              Docs
-            </a>
+          <div className="footer-content">
+            <p className="footer-text">
+              Powered by <strong>OpenKitx403</strong>
+            </p>
+            <div className="footer-links">
+              <a 
+                href="https://github.com/openkitx403/openkitx403" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="footer-link"
+              >
+                GitHub
+              </a>
+              <a 
+                href="https://openkitx403.github.io" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="footer-link"
+              >
+                Documentation
+              </a>
+            </div>
           </div>
         </div>
       </footer>
