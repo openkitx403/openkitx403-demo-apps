@@ -1,0 +1,12 @@
+[build]
+  command = "echo 'Static files only'"
+  publish = "."
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[context.production.environment]
+  API_URL = "https://openkitx403-demo-app-py.onrender.com"
+
