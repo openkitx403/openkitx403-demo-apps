@@ -29,24 +29,19 @@ app = FastAPI(
 
 # CORS Configuration
 # In production, replace "*" with your actual frontend domain
-ALLOWED_ORIGINS_STR = os.getenv("ALLOWED_ORIGINS", "*")
-
-if ALLOWED_ORIGINS_STR == "*":
-    ALLOWED_ORIGINS = ["*"]
-else:
-    ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS_STR.split(",")]
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=ALLOWED_ORIGINS if ALLOWED_ORIGINS != ["*"] else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["WWW-Authenticate", "Authorization"]
+    expose_headers=["WWW-Authenticate"]
 )
 
 # OpenKit403 Middleware Configuration
-API_URL = os.getenv("API_URL", "https://openkitx403-demo-apps.onrender.com")
+API_URL = os.getenv("API_URL", "https://openkitx403-ai-agent-backend.onrender.com")
 ISSUER = os.getenv("ISSUER", "ai-agent-api")
 
 app.add_middleware(
