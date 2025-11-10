@@ -29,15 +29,20 @@ app = FastAPI(
 
 # CORS Configuration
 # In production, replace "*" with your actual frontend domain
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+ALLOWED_ORIGINS_STR = os.getenv("ALLOWED_ORIGINS", "*")
+
+if ALLOWED_ORIGINS_STR == "*":
+    ALLOWED_ORIGINS = ["*"]
+else:
+    ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS_STR.split(",")]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS if ALLOWED_ORIGINS != ["*"] else ["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["WWW-Authenticate"]
+    expose_headers=["WWW-Authenticate", "Authorization"]
 )
 
 # OpenKit403 Middleware Configuration
