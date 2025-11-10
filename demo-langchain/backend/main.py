@@ -1,6 +1,6 @@
 """
 OpenKitx403 AI Agent API
-FastAPI backend with wallet authentication
+FastAPI backend with wallet authentication - CORS FIXED
 """
 
 from fastapi import FastAPI, Depends, HTTPException
@@ -27,21 +27,20 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# CORS Configuration
-# In production, replace "*" with your actual frontend domain
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
-
+# ===== CRITICAL: ADD CORS MIDDLEWARE FIRST =====
+# This MUST come before OpenKit403Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS if ALLOWED_ORIGINS != ["*"] else ["*"],
+    allow_origins=["*"],  # Allow all origins for testing
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
-    expose_headers=["WWW-Authenticate"]
+    expose_headers=["WWW-Authenticate", "Authorization"],
+    max_age=3600
 )
 
-# OpenKit403 Middleware Configuration
-API_URL = os.getenv("API_URL", "https://openkitx403-ai-agent-backend.onrender.com")
+# ===== THEN ADD OpenKit403 Middleware =====
+API_URL = os.getenv("API_URL", "https://openkitx403-demo-apps.onrender.com")
 ISSUER = os.getenv("ISSUER", "ai-agent-api")
 
 app.add_middleware(
@@ -50,7 +49,7 @@ app.add_middleware(
     issuer=ISSUER,
     ttl_seconds=60,
     clock_skew_seconds=120,
-    bind_method_path=False,  # Set to True for stricter security
+    bind_method_path=False,
     excluded_paths=["/", "/health", "/docs", "/redoc", "/openapi.json"]
 )
 
@@ -61,12 +60,10 @@ class PortfolioItem(BaseModel):
     value_usd: float
     change_24h: float
 
-
 class PortfolioResponse(BaseModel):
     wallet: str
     total_value_usd: float
     items: List[PortfolioItem]
-
 
 class NFT(BaseModel):
     mint: str
@@ -75,14 +72,12 @@ class NFT(BaseModel):
     image: str
     floor_price: float
 
-
 class NFTResponse(BaseModel):
     wallet: str
     total_nfts: int
     total_floor_value_sol: float
     collections: List[str]
     nfts: List[NFT]
-
 
 class Transaction(BaseModel):
     signature: str
@@ -91,17 +86,14 @@ class Transaction(BaseModel):
     status: str
     timestamp: str
 
-
 class TransactionResponse(BaseModel):
     wallet: str
     transactions: List[Transaction]
-
 
 class TokenPriceResponse(BaseModel):
     symbol: str
     price_usd: float
     change_24h: float
-
 
 class AnalysisResponse(BaseModel):
     wallet: str
@@ -121,7 +113,6 @@ def read_root():
         "version": "1.0.0",
         "docs": "/docs"
     }
-
 
 @app.get("/health")
 def health_check():
@@ -167,7 +158,6 @@ def get_portfolio(user: OpenKit403User = Depends(require_openkitx403_user)):
         ]
     }
 
-
 @app.get("/api/nfts", response_model=NFTResponse)
 def get_nfts(user: OpenKit403User = Depends(require_openkitx403_user)):
     """
@@ -204,7 +194,6 @@ def get_nfts(user: OpenKit403User = Depends(require_openkitx403_user)):
         ]
     }
 
-
 @app.get("/api/transactions", response_model=TransactionResponse)
 def get_transactions(user: OpenKit403User = Depends(require_openkitx403_user)):
     """
@@ -238,7 +227,6 @@ def get_transactions(user: OpenKit403User = Depends(require_openkitx403_user)):
         ]
     }
 
-
 @app.get("/api/token-price/{symbol}", response_model=TokenPriceResponse)
 def get_token_price(
     symbol: str,
@@ -248,7 +236,6 @@ def get_token_price(
     Get current token price and 24h change
     Requires wallet authentication via OpenKitx403
     """
-    # Mock price data
     prices = {
         "SOL": {"price_usd": 100.50, "change_24h": 2.5},
         "BTC": {"price_usd": 42500.00, "change_24h": 1.2},
@@ -271,7 +258,6 @@ def get_token_price(
         "price_usd": token_data["price_usd"],
         "change_24h": token_data["change_24h"]
     }
-
 
 @app.post("/api/analyze", response_model=AnalysisResponse)
 def analyze_portfolio(user: OpenKit403User = Depends(require_openkitx403_user)):
