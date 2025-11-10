@@ -3,7 +3,7 @@
  * Real implementation with wallet authentication
  */
 
-const API_URL = 'https://openkitx403-ai-agent-backend.onrender.com'; // UPDATE THIS
+const API_URL = 'https://openkitx403-demo-apps.onrender.com';
 
 // DOM Elements
 const chatMessages = document.getElementById('chatMessages');

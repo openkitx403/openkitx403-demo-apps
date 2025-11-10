@@ -41,7 +41,7 @@ app.add_middleware(
 )
 
 # OpenKit403 Middleware Configuration
-API_URL = os.getenv("API_URL", "https://openkitx403-ai-agent-backend.onrender.com")
+API_URL = os.getenv("API_URL", "https://openkitx403-demo-apps.onrender.com")
 ISSUER = os.getenv("ISSUER", "ai-agent-api")
 
 app.add_middleware(
