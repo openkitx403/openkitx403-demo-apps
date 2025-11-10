@@ -87,3 +87,6 @@ openapi.json
 *.pid
 .sass-cache/
 
+
+# Local Netlify folder
+.netlify

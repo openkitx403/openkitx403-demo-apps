@@ -1,174 +1,137 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenKitx403 AI Agent Demo</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AI Agent powered by LangChain and OpenKitx403 for Solana wallet operations">
+  <meta name="theme-color" content="#0A0A0A">
+  <title>OpenKitx403 AI Agent</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="app">
-        <!-- Header -->
-        <header class="header">
-            <div class="header-content">
-                <div class="logo">
-                    <span class="logo-text">OpenKitx403</span>
-                    <span class="demo-badge">AI AGENT DEMO</span>
+  <div class="app">
+    <header class="header">
+      <div class="header-content">
+        <div class="logo">
+          <span class="logo-text">OpenKitx403</span>
+          <span class="demo-badge">AI Agent</span>
+        </div>
+        <div class="header-info">
+          <span class="tech-badge">LangChain</span>
+          <span class="tech-badge">GPT-4</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <div class="container">
+        <section class="hero-section">
+          <h1 class="hero-title">Solana AI Agent</h1>
+          <p class="hero-subtitle">
+            Intelligent assistant powered by LangChain with secure wallet authentication.
+            Ask questions, get insights, and manage your portfolio conversationally.
+          </p>
+        </section>
+
+        <div class="chat-container">
+          <div class="chat-messages" id="chatMessages">
+            <div class="welcome-message">
+              <div class="agent-avatar">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+              </div>
+              <div class="message-content">
+                <div class="message-text">
+                  Hello! I'm your Solana AI agent. I can help you with:
                 </div>
-                <div class="header-info">
-                    <span class="tech-badge">🤖 LangChain</span>
-                    <span class="tech-badge">🔐 Wallet Auth</span>
+                <ul class="capability-list">
+                  <li>Portfolio overview and analysis</li>
+                  <li>NFT collection details</li>
+                  <li>Recent transaction history</li>
+                  <li>Token price lookups</li>
+                  <li>Investment recommendations</li>
+                </ul>
+                <div class="message-text">
+                  Ask me anything about your wallet!
                 </div>
+              </div>
             </div>
-        </header>
+          </div>
 
-        <!-- Main Content -->
-        <main class="main">
-            <div class="container">
-                <!-- Hero Section -->
-                <section class="hero-section">
-                    <h1 class="hero-title">🤖 AI Agent Assistant</h1>
-                    <p class="hero-subtitle">
-                        Chat with an AI agent that can authenticate with Solana wallets<br>
-                        and perform on-chain operations using LangChain + OpenKitx403
-                    </p>
-                </section>
-
-                <!-- Chat Container -->
-                <div class="chat-container">
-                    <!-- Chat Messages -->
-                    <div class="chat-messages" id="chatMessages">
-                        <div class="welcome-message">
-                            <div class="agent-avatar">🤖</div>
-                            <div class="message-content">
-                                <p class="message-text">
-                                    Hi! I'm your Solana AI assistant. I can help you with:
-                                </p>
-                                <ul class="capability-list">
-                                    <li>📊 Check your portfolio and balances</li>
-                                    <li>🎨 View your NFT collection</li>
-                                    <li>📜 See recent transactions</li>
-                                    <li>💹 Get token prices</li>
-                                    <li>📈 Analyze and get recommendations</li>
-                                </ul>
-                                <p class="message-text">
-                                    All operations are authenticated using your Solana wallet!
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Loading Indicator -->
-                    <div class="typing-indicator" id="typingIndicator" style="display: none;">
-                        <div class="agent-avatar-small">🤖</div>
-                        <div class="typing-dots">
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                        </div>
-                    </div>
-
-                    <!-- Chat Input -->
-                    <div class="chat-input-container">
-                        <div class="example-prompts" id="examplePrompts">
-                            <button class="example-prompt" data-prompt="Show me my portfolio">
-                                📊 My portfolio
-                            </button>
-                            <button class="example-prompt" data-prompt="What NFTs do I own?">
-                                🎨 My NFTs
-                            </button>
-                            <button class="example-prompt" data-prompt="Show recent transactions">
-                                📜 Recent activity
-                            </button>
-                            <button class="example-prompt" data-prompt="What's the price of SOL?">
-                                💹 SOL price
-                            </button>
-                            <button class="example-prompt" data-prompt="Analyze my portfolio">
-                                📈 Analyze
-                            </button>
-                        </div>
-                        <form class="chat-input-form" id="chatForm">
-                            <input 
-                                type="text" 
-                                class="chat-input" 
-                                id="chatInput"
-                                placeholder="Ask me about your wallet..."
-                                autocomplete="off"
-                            />
-                            <button type="submit" class="send-button" id="sendButton">
-                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                                    <path d="M3 10L17 3L10 17L8 11L3 10Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                            </button>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- Info Section -->
-                <section class="info-section">
-                    <div class="info-card">
-                        <h3 class="info-title">🚀 How It Works</h3>
-                        <ol class="info-list">
-                            <li>AI agent receives your question</li>
-                            <li>Agent decides which tools to use</li>
-                            <li>Authenticates with API using Solana wallet</li>
-                            <li>Fetches real data and provides answer</li>
-                        </ol>
-                    </div>
-                    <div class="info-card">
-                        <h3 class="info-title">🛠️ Tech Stack</h3>
-                        <ul class="tech-list">
-                            <li><strong>LangChain:</strong> Agent framework</li>
-                            <li><strong>OpenAI GPT-4:</strong> Language model</li>
-                            <li><strong>OpenKitx403:</strong> Wallet auth</li>
-                            <li><strong>FastAPI:</strong> Backend API</li>
-                        </ul>
-                    </div>
-                </section>
-
-                <!-- Setup Instructions -->
-                <section class="setup-section">
-                    <h2 class="section-title">💻 Run Locally</h2>
-                    <div class="setup-steps">
-                        <div class="setup-step">
-                            <div class="step-number">1</div>
-                            <div class="step-content">
-                                <h4>Start Backend</h4>
-                                <code>cd backend && python main.py</code>
-                            </div>
-                        </div>
-                        <div class="setup-step">
-                            <div class="step-number">2</div>
-                            <div class="step-content">
-                                <h4>Setup Agent</h4>
-                                <code>cd agent && pip install -r requirements.txt</code>
-                            </div>
-                        </div>
-                        <div class="setup-step">
-                            <div class="step-number">3</div>
-                            <div class="step-content">
-                                <h4>Run Agent</h4>
-                                <code>python agent.py</code>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+          <div class="typing-indicator hidden" id="typingIndicator">
+            <div class="agent-avatar-small">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+              </svg>
             </div>
-        </main>
+            <div class="typing-dots">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          </div>
 
-        <!-- Footer -->
-        <footer class="footer">
-            <p class="footer-text">
-                Powered by 
-                <a href="https://github.com/openkitx403" class="footer-link" target="_blank">OpenKitx403</a>
-                · AI agents with cryptographic wallet authentication
-            </p>
-        </footer>
-    </div>
+          <div class="chat-input-container">
+            <div class="example-prompts">
+              <button class="example-prompt" data-prompt="Show me my portfolio">Portfolio</button>
+              <button class="example-prompt" data-prompt="What NFTs do I own?">NFTs</button>
+              <button class="example-prompt" data-prompt="Show recent transactions">Transactions</button>
+              <button class="example-prompt" data-prompt="Analyze my portfolio">Analyze</button>
+            </div>
+            <form class="chat-input-form" id="chatForm">
+              <input 
+                type="text" 
+                class="chat-input" 
+                id="chatInput" 
+                placeholder="Ask about your wallet..." 
+                autocomplete="off"
+                required
+              />
+              <button type="submit" class="send-button" id="sendButton">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+              </button>
+            </form>
+          </div>
+        </div>
 
-    <script src="app.js"></script>
+        <section class="info-section">
+          <div class="info-card">
+            <h3 class="info-title">How It Works</h3>
+            <ol class="info-list">
+              <li>Ask a question about your wallet</li>
+              <li>Agent analyzes and selects tools</li>
+              <li>Authenticates with Solana keypair</li>
+              <li>Returns formatted response</li>
+            </ol>
+          </div>
+          <div class="info-card">
+            <h3 class="info-title">Tech Stack</h3>
+            <ul class="tech-list">
+              <li><strong>LangChain:</strong> Agent orchestration</li>
+              <li><strong>OpenAI GPT-4:</strong> Language model</li>
+              <li><strong>OpenKitx403:</strong> Wallet auth</li>
+              <li><strong>FastAPI:</strong> Backend API</li>
+            </ul>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <p class="footer-text">
+        <a href="https://github.com/openkitx403" target="_blank" rel="noopener noreferrer">OpenKitx403</a>
+        • Secure HTTP-native authentication for Solana
+      </p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
 </body>
 </html>

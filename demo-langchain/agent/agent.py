@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+"""
+OpenKitx403 AI Agent
+LangChain-powered agent with wallet authentication
+"""
+
 import os
 from langchain_openai import ChatOpenAI
 from langchain.agents import AgentExecutor, create_openai_functions_agent
@@ -15,7 +20,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Colors for terminal
+# Check for API key
+if not os.getenv("OPENAI_API_KEY"):
+    print("ERROR: OPENAI_API_KEY not set in .env file")
+    exit(1)
+
+# Colors
 class Colors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -35,128 +45,88 @@ def print_user(text):
     print(f"{Colors.OKCYAN}You: {Colors.ENDC}{text}")
 
 def print_agent(text):
-    print(f"{Colors.OKGREEN}Agent: {Colors.ENDC}{text}\n")
+    print(f"{Colors.OKGREEN}Agent: {Colors.ENDC}{text}")
 
-def print_thinking():
-    print(f"{Colors.WARNING}🤔 Thinking...{Colors.ENDC}")
-
-def create_agent():
-    """Create the LangChain agent with Solana tools"""
+def main():
+    print_header("OpenKitx403 AI Agent")
+    print(f"{Colors.WARNING}Authenticating with Solana wallet...{Colors.ENDC}\n")
+    
+    # API URL
+    api_url = os.getenv("API_URL", "http://localhost:8000")
+    
+    # Initialize tools
+    tools = [
+        GetPortfolioTool(api_url=api_url),
+        GetNFTsTool(api_url=api_url),
+        GetTransactionsTool(api_url=api_url),
+        GetTokenPriceTool(api_url=api_url),
+        AnalyzePortfolioTool(api_url=api_url)
+    ]
     
     # Initialize LLM
     llm = ChatOpenAI(
         model="gpt-4",
-        temperature=0,
+        temperature=0.7,
         openai_api_key=os.getenv("OPENAI_API_KEY")
     )
     
-    # Create tools
-    tools = [
-        GetPortfolioTool(),
-        GetNFTsTool(),
-        GetTransactionsTool(),
-        GetTokenPriceTool(),
-        AnalyzePortfolioTool()
-    ]
-    
     # Create prompt
     prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a helpful Solana wallet assistant AI agent. 
-You have access to tools that can authenticate with the user's Solana wallet and fetch data.
-
-Your capabilities:
-- Check portfolio balances and values
+        ("system", """You are a helpful Solana wallet assistant. You have access to tools that can:
+- Get portfolio balances and values
 - View NFT collections
-- See recent transactions
-- Get token prices
+- Check transaction history
+- Look up token prices
 - Analyze portfolio and provide recommendations
 
-When the user asks about their wallet, use the appropriate tools to fetch real data.
-Be conversational, helpful, and explain what you're doing.
-Always provide clear, formatted responses with the data you retrieve.
-
-Important: You can only access data for the wallet that's authenticated via the keypair.
-All API calls are cryptographically authenticated using OpenKitx403 protocol."""),
-        ("user", "{input}"),
-        MessagesPlaceholder(variable_name="agent_scratchpad"),
+Always authenticate with the user's Solana wallet when using tools.
+Provide clear, concise answers with relevant data.
+Format numbers nicely (use commas, currency symbols).
+"""),
+        MessagesPlaceholder(variable_name="chat_history"),
+        ("human", "{input}"),
+        MessagesPlaceholder(variable_name="agent_scratchpad")
     ])
     
     # Create agent
     agent = create_openai_functions_agent(llm, tools, prompt)
     
-    # Create executor
+    # Memory
+    memory = ConversationBufferMemory(
+        memory_key="chat_history",
+        return_messages=True
+    )
+    
+    # Executor
     agent_executor = AgentExecutor(
         agent=agent,
         tools=tools,
-        verbose=False,
-        max_iterations=3,
+        memory=memory,
+        verbose=True,
         handle_parsing_errors=True
     )
     
-    return agent_executor
-
-def show_examples():
-    """Show example prompts"""
-    examples = [
-        "Show me my portfolio",
-        "What NFTs do I own?",
-        "What's the current price of SOL?",
-        "Show my recent transactions",
-        "Analyze my portfolio and give recommendations",
-        "How many Okay Bears do I have?",
-    ]
+    print(f"{Colors.OKGREEN}Agent ready! Type 'quit' to exit.{Colors.ENDC}\n")
     
-    print(f"{Colors.OKCYAN}Example prompts:{Colors.ENDC}")
-    for i, example in enumerate(examples, 1):
-        print(f"  {i}. {example}")
-    print()
-
-def main():
-    """Main chat loop"""
-    print_header("🤖 SOLANA AI AGENT - LangChain Demo")
-    
-    print(f"{Colors.OKGREEN}Welcome! I'm your Solana wallet AI assistant.{Colors.ENDC}")
-    print(f"{Colors.OKGREEN}I can help you check your portfolio, NFTs, and more.{Colors.ENDC}\n")
-    
-    show_examples()
-    
-    print(f"{Colors.WARNING}Note: Make sure the API server is running on localhost:8000{Colors.ENDC}")
-    print(f"{Colors.WARNING}Type 'exit' or 'quit' to stop, 'examples' to see prompts again{Colors.ENDC}\n")
-    
-    # Create agent
-    try:
-        agent = create_agent()
-    except Exception as e:
-        print(f"{Colors.FAIL}Error creating agent: {e}{Colors.ENDC}")
-        print(f"{Colors.WARNING}Make sure OPENAI_API_KEY is set in .env file{Colors.ENDC}")
-        return
-    
-    # Chat loop
+    # Main loop
     while True:
         try:
-            # Get user input
             user_input = input(f"{Colors.OKCYAN}You: {Colors.ENDC}")
             
-            if user_input.lower() in ['exit', 'quit']:
-                print(f"\n{Colors.OKGREEN}Goodbye! 👋{Colors.ENDC}\n")
+            if user_input.lower() in ['quit', 'exit', 'q']:
+                print(f"\n{Colors.WARNING}Goodbye!{Colors.ENDC}")
                 break
-            
-            if user_input.lower() == 'examples':
-                show_examples()
-                continue
             
             if not user_input.strip():
                 continue
             
-            # Process with agent
-            print_thinking()
-            result = agent.invoke({"input": user_input})
-            
-            # Display response
-            print_agent(result['output'])
+            # Run agent
+            response = agent_executor.invoke({"input": user_input})
+            print_agent(response["output"])
+            print()
             
         except KeyboardInterrupt:
-            print(f"\n\n{Colors.WARNING}Interrupted by user{Colors.ENDC}")
+            print(f"\n\n{Colors.WARNING}Interrupted. Goodbye!{Colors.ENDC}")
             break
         except Exception as e:
             print(f"{Colors.FAIL}Error: {e}{Colors.ENDC}\n")
