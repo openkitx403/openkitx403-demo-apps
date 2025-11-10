@@ -1,9 +1,9 @@
 /**
  * OpenKitx403 AI Agent Frontend
- * Clean demo interface with mock responses
+ * Real implementation with wallet authentication
  */
 
-const API_URL = 'https://openkitx403-ai-agent-backend.onrender.com';
+const API_URL = 'https://openkitx403-ai-agent-backend.onrender.com'; // UPDATE THIS
 
 // DOM Elements
 const chatMessages = document.getElementById('chatMessages');
@@ -13,60 +13,8 @@ const sendButton = document.getElementById('sendButton');
 const typingIndicator = document.getElementById('typingIndicator');
 const examplePrompts = document.querySelectorAll('.example-prompt');
 
-// Mock responses for demo
-const MOCK_RESPONSES = {
-  portfolio: `Portfolio Summary:
-Total Value: $17,800.00
-
-Holdings:
-- SOL: 125.5 ($12,550.00) [+2.5% 24h]
-- USDC: 5000.0 ($5,000.00) [+0.0% 24h]
-- BONK: 1000000.0 ($250.00) [-5.2% 24h]`,
-
-  nfts: `NFT Collection Summary:
-Total NFTs: 3
-Total Floor Value: 210.9 SOL
-
-Collections: Okay Bears, DeGods
-
-NFTs:
-- Okay Bear #1234 (Okay Bears) Floor: 45.2 SOL
-- Okay Bear #5678 (Okay Bears) Floor: 45.2 SOL
-- DeGod #789 (DeGods) Floor: 120.5 SOL`,
-
-  transactions: `Recent Transactions:
-
-- SEND: 2.5 SOL
-  Status: confirmed
-  Signature: 5x0KJh...
-
-- RECEIVE: 5.0 SOL
-  Status: confirmed
-  Signature: 5x1KJh...
-
-- SWAP: 1.2 SOL
-  Status: confirmed
-  Signature: 5x2KJh...`,
-
-  price: `SOL Price:
-Current: $100.50
-24h Change: +2.5%`,
-
-  analyze: `Portfolio Analysis:
-
-Risk Score: 6.5/10 (Medium)
-Diversification: Good
-
-Recommendations:
-• Consider rebalancing - SOL allocation is high (71%)
-• BONK showing high volatility, monitor closely
-• Stable allocation in USDC provides good buffer
-
-Highlights:
-• Portfolio up 15% this month
-• Strong exposure to Solana ecosystem
-• 3 NFT collections with total floor value 210 SOL`,
-};
+// Wallet state
+let walletPublicKey = null;
 
 /**
  * Add message to chat
@@ -118,68 +66,308 @@ function scrollToBottom() {
 }
 
 /**
- * Get mock response based on query
- */
-function getMockResponse(query) {
-  const q = query.toLowerCase();
-  
-  if (q.includes('portfolio') || q.includes('holdings') || q.includes('balance')) {
-    return MOCK_RESPONSES.portfolio;
-  }
-  if (q.includes('nft') || q.includes('collectible')) {
-    return MOCK_RESPONSES.nfts;
-  }
-  if (q.includes('transaction') || q.includes('history') || q.includes('activity')) {
-    return MOCK_RESPONSES.transactions;
-  }
-  if (q.includes('price') || q.includes('sol') || q.includes('btc') || q.includes('eth')) {
-    return MOCK_RESPONSES.price;
-  }
-  if (q.includes('analyze') || q.includes('recommendation') || q.includes('suggest')) {
-    return MOCK_RESPONSES.analyze;
-  }
-  
-  return `I can help you with:
-• Portfolio overview and balances
-• NFT collection details
-• Transaction history
-• Token prices
-• Portfolio analysis
-
-Try asking: "Show me my portfolio" or "What NFTs do I own?"`;
-}
-
-/**
- * Process user query
- */
-async function processQuery(query) {
-  // Add user message
-  addMessage(query, true);
-  
-  // Show typing
-  showTyping();
-  sendButton.disabled = true;
-  
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
-  
-  // Get response
-  const response = getMockResponse(query);
-  
-  // Hide typing and show response
-  hideTyping();
-  addMessage(response);
-  sendButton.disabled = false;
-  chatInput.focus();
-}
-
-/**
  * Escape HTML to prevent XSS
  */
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+/**
+ * Connect to Phantom wallet
+ */
+async function connectWallet() {
+  try {
+    if (!window.solana || !window.solana.isPhantom) {
+      addMessage('Please install Phantom wallet extension to use this app.\n\nVisit: https://phantom.app');
+      return false;
+    }
+
+    const response = await window.solana.connect();
+    walletPublicKey = response.publicKey.toString();
+    
+    addMessage(`Connected to wallet: ${walletPublicKey.slice(0, 8)}...${walletPublicKey.slice(-8)}`);
+    return true;
+  } catch (error) {
+    addMessage(`Failed to connect wallet: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Make authenticated API request with OpenKitx403
+ */
+async function authenticatedRequest(endpoint, method = 'GET', body = null) {
+  if (!walletPublicKey) {
+    throw new Error('Wallet not connected');
+  }
+
+  const url = `${API_URL}${endpoint}`;
+  
+  // Step 1: Initial request (will get 403 challenge)
+  let response = await fetch(url, {
+    method,
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: body ? JSON.stringify(body) : null
+  });
+
+  // Step 2: If 403, handle authentication challenge
+  if (response.status === 403) {
+    const wwwAuth = response.headers.get('WWW-Authenticate');
+    
+    if (!wwwAuth || !wwwAuth.startsWith('OpenKitx403')) {
+      throw new Error('Invalid authentication challenge');
+    }
+
+    // Extract challenge
+    const challengeMatch = wwwAuth.match(/challenge="([^"]+)"/);
+    if (!challengeMatch) {
+      throw new Error('No challenge in response');
+    }
+
+    const challengeB64 = challengeMatch[1];
+    
+    // Decode challenge
+    const challengeJson = base64UrlDecode(challengeB64);
+    const challenge = JSON.parse(challengeJson);
+
+    // Build signing string
+    const signingString = buildSigningString(challenge);
+    
+    // Sign with wallet
+    const signature = await signMessage(signingString);
+    
+    // Build authorization header
+    const nonce = generateNonce();
+    const ts = new Date().toISOString().replace(/\.\d{3}/, '');
+    const bind = `${method}:${new URL(url).pathname}`;
+    
+    const authHeader = `OpenKitx403 addr="${walletPublicKey}", sig="${signature}", challenge="${challengeB64}", ts="${ts}", nonce="${nonce}", bind="${bind}"`;
+
+    // Step 3: Retry with authorization
+    response = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader
+      },
+      body: body ? JSON.stringify(body) : null
+    });
+  }
+
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status} ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Sign message with Phantom wallet
+ */
+async function signMessage(message) {
+  const encodedMessage = new TextEncoder().encode(message);
+  const signedMessage = await window.solana.signMessage(encodedMessage, 'utf8');
+  return base58Encode(signedMessage.signature);
+}
+
+/**
+ * Build signing string for OpenKitx403
+ */
+function buildSigningString(challenge) {
+  const payload = JSON.stringify(challenge, Object.keys(challenge).sort());
+  
+  return [
+    'OpenKitx403 Challenge',
+    '',
+    `domain: ${challenge.aud}`,
+    `server: ${challenge.serverId}`,
+    `nonce: ${challenge.nonce}`,
+    `ts: ${challenge.ts}`,
+    `method: ${challenge.method}`,
+    `path: ${challenge.path}`,
+    '',
+    `payload: ${payload}`
+  ].join('\n');
+}
+
+/**
+ * Generate random nonce
+ */
+function generateNonce() {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return base58Encode(bytes);
+}
+
+/**
+ * Base64 URL decode
+ */
+function base64UrlDecode(str) {
+  let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+  const padding = (4 - (base64.length % 4)) % 4;
+  base64 += '='.repeat(padding);
+  return atob(base64);
+}
+
+/**
+ * Base58 encode (simple implementation)
+ */
+function base58Encode(bytes) {
+  const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  let encoded = '';
+  let num = BigInt('0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(''));
+  
+  while (num > 0n) {
+    const remainder = num % 58n;
+    num = num / 58n;
+    encoded = ALPHABET[Number(remainder)] + encoded;
+  }
+  
+  // Handle leading zeros
+  for (let i = 0; i < bytes.length && bytes[i] === 0; i++) {
+    encoded = '1' + encoded;
+  }
+  
+  return encoded;
+}
+
+/**
+ * Process query and get real API response
+ */
+async function processQuery(query) {
+  addMessage(query, true);
+  showTyping();
+  sendButton.disabled = true;
+
+  try {
+    // Check wallet connection
+    if (!walletPublicKey) {
+      const connected = await connectWallet();
+      if (!connected) {
+        hideTyping();
+        sendButton.disabled = false;
+        return;
+      }
+    }
+
+    // Determine which endpoint to call based on query
+    const q = query.toLowerCase();
+    let data;
+
+    if (q.includes('portfolio') || q.includes('balance') || q.includes('holdings')) {
+      data = await authenticatedRequest('/api/portfolio');
+      addMessage(formatPortfolio(data));
+    } 
+    else if (q.includes('nft') || q.includes('collectible')) {
+      data = await authenticatedRequest('/api/nfts');
+      addMessage(formatNFTs(data));
+    }
+    else if (q.includes('transaction') || q.includes('history') || q.includes('activity')) {
+      data = await authenticatedRequest('/api/transactions');
+      addMessage(formatTransactions(data));
+    }
+    else if (q.includes('price')) {
+      const symbol = q.match(/\b(sol|btc|eth|usdc|bonk)\b/i)?.[1] || 'SOL';
+      data = await authenticatedRequest(`/api/token-price/${symbol}`);
+      addMessage(formatPrice(data));
+    }
+    else if (q.includes('analyze') || q.includes('recommendation')) {
+      data = await authenticatedRequest('/api/analyze', 'POST');
+      addMessage(formatAnalysis(data));
+    }
+    else {
+      addMessage('I can help you with:\n• Portfolio overview\n• NFT collections\n• Transaction history\n• Token prices\n• Portfolio analysis\n\nTry: "Show me my portfolio"');
+    }
+
+  } catch (error) {
+    addMessage(`Error: ${error.message}\n\nPlease check:\n• Wallet is connected\n• Backend is running\n• CORS is configured`);
+  } finally {
+    hideTyping();
+    sendButton.disabled = false;
+    chatInput.focus();
+  }
+}
+
+/**
+ * Format portfolio response
+ */
+function formatPortfolio(data) {
+  let result = `Portfolio Summary\n`;
+  result += `Total Value: $${data.total_value_usd.toLocaleString()}\n\n`;
+  result += `Holdings:\n`;
+  
+  data.items.forEach(item => {
+    const change = item.change_24h >= 0 ? `+${item.change_24h}` : item.change_24h;
+    result += `• ${item.asset}: ${item.amount.toLocaleString()} ($${item.value_usd.toLocaleString()}) [${change}% 24h]\n`;
+  });
+  
+  return result;
+}
+
+/**
+ * Format NFTs response
+ */
+function formatNFTs(data) {
+  let result = `NFT Collection\n`;
+  result += `Total NFTs: ${data.total_nfts}\n`;
+  result += `Floor Value: ${data.total_floor_value_sol} SOL\n\n`;
+  
+  data.nfts.forEach(nft => {
+    result += `• ${nft.name}\n`;
+    result += `  Collection: ${nft.collection}\n`;
+    result += `  Floor: ${nft.floor_price} SOL\n\n`;
+  });
+  
+  return result;
+}
+
+/**
+ * Format transactions response
+ */
+function formatTransactions(data) {
+  let result = `Recent Transactions\n\n`;
+  
+  data.transactions.forEach(tx => {
+    result += `• ${tx.type}: ${tx.amount} SOL\n`;
+    result += `  Status: ${tx.status}\n`;
+    result += `  ${tx.timestamp}\n\n`;
+  });
+  
+  return result;
+}
+
+/**
+ * Format price response
+ */
+function formatPrice(data) {
+  const change = data.change_24h >= 0 ? `+${data.change_24h}` : data.change_24h;
+  return `${data.symbol}\nPrice: $${data.price_usd.toLocaleString()}\n24h Change: ${change}%`;
+}
+
+/**
+ * Format analysis response
+ */
+function formatAnalysis(data) {
+  let result = `Portfolio Analysis\n\n`;
+  result += `Risk Score: ${data.risk_score}/10\n`;
+  result += `Diversification: ${data.diversification}\n\n`;
+  
+  if (data.highlights.length > 0) {
+    result += `Highlights:\n`;
+    data.highlights.forEach(h => result += `• ${h}\n`);
+    result += `\n`;
+  }
+  
+  if (data.recommendations.length > 0) {
+    result += `Recommendations:\n`;
+    data.recommendations.forEach(r => result += `• ${r}\n`);
+  }
+  
+  return result;
 }
 
 /**
@@ -211,5 +399,13 @@ examplePrompts.forEach(button => {
  */
 document.addEventListener('DOMContentLoaded', () => {
   chatInput.focus();
+  
+  // Check if Phantom is installed
+  if (!window.solana || !window.solana.isPhantom) {
+    addMessage('⚠️ Phantom wallet not detected!\n\nPlease install Phantom wallet to use this app:\nhttps://phantom.app\n\nRefresh the page after installing.');
+  } else {
+    addMessage('Welcome! Click "Connect Wallet" or start asking questions.');
+  }
+  
   console.log('[App] Ready');
 });
