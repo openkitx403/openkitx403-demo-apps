@@ -1,6 +1,6 @@
 """
 OpenKitx403 AI Agent API
-FastAPI backend with wallet authentication - CORS FIXED
+FastAPI backend with wallet authentication
 """
 
 from fastapi import FastAPI, Depends, HTTPException
@@ -27,22 +27,21 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# ===== CRITICAL: ADD CORS MIDDLEWARE FIRST =====
-# This MUST come before OpenKit403Middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for testing
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-    expose_headers=["WWW-Authenticate", "Authorization"],
-    max_age=3600
-)
-
-# ===== THEN ADD OpenKit403 Middleware =====
+# Configuration
 API_URL = os.getenv("API_URL", "https://openkitx403-demo-apps.onrender.com")
 ISSUER = os.getenv("ISSUER", "ai-agent-api")
 
+# CORS - EXACT SAME AS YOUR WORKING TRADING BOT
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["WWW-Authenticate"]
+)
+
+# OpenKit403 Middleware
 app.add_middleware(
     OpenKit403Middleware,
     audience=API_URL,
