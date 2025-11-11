@@ -1,9 +1,9 @@
 """
 OpenKitx403 AI Agent API
-FastAPI backend with wallet authentication
+FastAPI backend with wallet authentication - OPTIONS FIX
 """
 
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from openkitx403 import (
     OpenKit403Middleware,
@@ -31,17 +31,31 @@ app = FastAPI(
 API_URL = os.getenv("API_URL", "https://openkitx403-demo-apps.onrender.com")
 ISSUER = os.getenv("ISSUER", "ai-agent-api")
 
-# CORS - EXACT SAME AS YOUR WORKING TRADING BOT
+# ===== CRITICAL: Handle OPTIONS first =====
+@app.options("/{full_path:path}")
+async def options_handler(request: Request, full_path: str):
+    """Handle all OPTIONS requests (CORS preflight)"""
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept, Origin",
+            "Access-Control-Max-Age": "3600",
+        }
+    )
+
+# CORS Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["WWW-Authenticate"]
+    expose_headers=["WWW-Authenticate", "Authorization"]
 )
 
-# OpenKit403 Middleware
+# OpenKit403 Middleware - after CORS
 app.add_middleware(
     OpenKit403Middleware,
     audience=API_URL,
@@ -49,8 +63,7 @@ app.add_middleware(
     ttl_seconds=60,
     clock_skew_seconds=120,
     bind_method_path=False,
-    excluded_paths=["/", "/health", "/docs", "/redoc", "/openapi.json"],
-    excluded_methods=["OPTIONS"]
+    excluded_paths=["/", "/health", "/docs", "/redoc", "/openapi.json"]
 )
 
 # Response Models
