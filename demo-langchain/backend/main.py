@@ -1,10 +1,12 @@
 """
 OpenKitx403 AI Agent API
-FastAPI backend with wallet authentication - CORS FIX
+FastAPI backend with wallet authentication - PRODUCTION FIX
 """
 
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
+from starlette.middleware.base import BaseHTTPMiddleware
 from openkitx403 import (
     OpenKit403Middleware,
     require_openkitx403_user,
@@ -15,8 +17,13 @@ from typing import List, Dict, Any
 from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
+import logging
 
 load_dotenv()
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="OpenKitx403 AI Agent API",
@@ -39,10 +46,31 @@ ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173"
 ]
 
+
+# CRITICAL: OPTIONS middleware FIRST
+class OptionsMiddleware(BaseHTTPMiddleware):
+    """Handle OPTIONS requests before any authentication"""
+    async def dispatch(self, request: Request, call_next):
+        if request.method == "OPTIONS":
+            return Response(
+                status_code=200,
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept, Origin, User-Agent",
+                    "Access-Control-Max-Age": "3600",
+                }
+            )
+        return await call_next(request)
+
+
+# Add OPTIONS middleware FIRST
+app.add_middleware(OptionsMiddleware)
+
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=["*"],  # Allow all for now
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "Accept", "Origin", "User-Agent"],
@@ -58,7 +86,7 @@ app.add_middleware(
     clock_skew_seconds=120,
     bind_method_path=False,
     excluded_paths=["/", "/health", "/docs", "/redoc", "/openapi.json"],
-    allowed_origins=ALLOWED_ORIGINS  # ✅ Pass allowed origins
+    allowed_origins=["*"]  # Pass to OpenKit403Middleware
 )
 
 
@@ -132,9 +160,10 @@ def health_check():
     }
 
 
-# Protected Routes
+# Protected Routes with DEBUG logging
 @app.get("/api/portfolio", response_model=PortfolioResponse)
-def get_portfolio(user: OpenKit403User = Depends(require_openkitx403_user)):
+async def get_portfolio(request: Request, user: OpenKit403User = Depends(require_openkitx403_user)):
+    logger.info(f"Portfolio request from {user.address}")
     return {
         "wallet": str(user.address),
         "total_value_usd": 17800.00,
@@ -267,5 +296,6 @@ def analyze_portfolio(user: OpenKit403User = Depends(require_openkitx403_user)):
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
+    logger.info(f"Starting server on port {port}")
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
 
