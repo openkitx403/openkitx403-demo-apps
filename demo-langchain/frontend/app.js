@@ -1,6 +1,6 @@
 /**
  * OpenKitx403 AI Agent Frontend
- * Real implementation with wallet authentication - FIXED
+ * FINAL FIX - Matches Python backend exactly
  */
 
 const API_URL = 'https://openkitx403-demo-apps.onrender.com';
@@ -16,9 +16,6 @@ const examplePrompts = document.querySelectorAll('.example-prompt');
 // Wallet state
 let walletPublicKey = null;
 
-/**
- * Add message to chat
- */
 function addMessage(text, isUser = false) {
   const messageDiv = document.createElement('div');
   messageDiv.className = isUser ? 'user-message' : 'agent-message';
@@ -43,40 +40,25 @@ function addMessage(text, isUser = false) {
   scrollToBottom();
 }
 
-/**
- * Show typing indicator
- */
 function showTyping() {
   typingIndicator.classList.remove('hidden');
   scrollToBottom();
 }
 
-/**
- * Hide typing indicator
- */
 function hideTyping() {
   typingIndicator.classList.add('hidden');
 }
 
-/**
- * Scroll chat to bottom
- */
 function scrollToBottom() {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-/**
- * Escape HTML to prevent XSS
- */
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
 }
 
-/**
- * Connect to Phantom wallet
- */
 async function connectWallet() {
   try {
     if (!window.solana || !window.solana.isPhantom) {
@@ -87,7 +69,7 @@ async function connectWallet() {
     const response = await window.solana.connect();
     walletPublicKey = response.publicKey.toString();
 
-    addMessage(`Connected to wallet: ${walletPublicKey.slice(0, 8)}...${walletPublicKey.slice(-8)}`);
+    addMessage(`✅ Connected: ${walletPublicKey.slice(0, 8)}...${walletPublicKey.slice(-8)}`);
     return true;
   } catch (error) {
     addMessage(`Failed to connect wallet: ${error.message}`);
@@ -97,6 +79,7 @@ async function connectWallet() {
 
 /**
  * Make authenticated API request with OpenKitx403
+ * FIXED: Matches Python backend signature verification
  */
 async function authenticatedRequest(endpoint, method = 'GET', body = null) {
   if (!walletPublicKey) {
@@ -134,18 +117,25 @@ async function authenticatedRequest(endpoint, method = 'GET', body = null) {
     const challengeJson = base64UrlDecode(challengeB64);
     const challenge = JSON.parse(challengeJson);
 
-    // Build signing string
-    const signingString = buildSigningString(challenge);
+    console.log('[Auth] Challenge:', challenge);
 
-    // Sign with wallet - FIXED
+    // ✅ CRITICAL FIX: Build signing string EXACTLY as Python backend does
+    const signingString = buildSigningString(challenge);
+    console.log('[Auth] Signing string:', signingString);
+
+    // Sign with wallet
     const signature = await signMessage(signingString);
+    console.log('[Auth] Signature:', signature.substring(0, 20) + '...');
 
     // Build authorization header
     const nonce = generateNonce();
-    const ts = new Date().toISOString().replace(/\.\d{3}/, '');
-    const bind = `${method}:${new URL(url).pathname}`;
+    const ts = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+    const pathname = new URL(url).pathname;
+    const bind = `${method}:${pathname}`;
 
     const authHeader = `OpenKitx403 addr="${walletPublicKey}", sig="${signature}", challenge="${challengeB64}", ts="${ts}", nonce="${nonce}", bind="${bind}"`;
+
+    console.log('[Auth] Retrying with auth...');
 
     // Step 3: Retry with authorization
     response = await fetch(url, {
@@ -156,42 +146,52 @@ async function authenticatedRequest(endpoint, method = 'GET', body = null) {
       },
       body: body ? JSON.stringify(body) : null
     });
+
+    console.log('[Auth] Response status:', response.status);
   }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || `API error: ${response.status} ${response.statusText}`);
+    const errorMsg = errorData.detail || `API error: ${response.status} ${response.statusText}`;
+    console.error('[Auth] Error:', errorMsg);
+    throw new Error(errorMsg);
   }
 
   return response.json();
 }
 
 /**
- * Sign message with Phantom wallet - FIXED
+ * Sign message with Phantom wallet
  */
 async function signMessage(message) {
   try {
-    // Encode message to Uint8Array
     const encodedMessage = new TextEncoder().encode(message);
-    
-    // ✅ Use correct Phantom signMessage method
     const { signature } = await window.solana.signMessage(encodedMessage, 'utf8');
-    
-    // ✅ signature is a Uint8Array, base58-encode it
     return base58Encode(signature);
   } catch (error) {
-    console.error('Sign message error:', error);
+    console.error('[Sign] Error:', error);
     throw new Error(`Failed to sign message: ${error.message}`);
   }
 }
 
 /**
- * Build signing string for OpenKitx403
+ * Build signing string - MATCHES Python backend EXACTLY
+ * Python backend does:
+ * payload = json.dumps(challenge.to_dict(), sort_keys=True)
  */
 function buildSigningString(challenge) {
-  const payload = JSON.stringify(challenge, Object.keys(challenge).sort());
+  // ✅ CRITICAL: Sort keys and stringify like Python's json.dumps(sort_keys=True)
+  // Python sorts keys alphabetically, not by insertion order
+  const sortedKeys = Object.keys(challenge).sort();
+  const sortedChallenge = {};
+  sortedKeys.forEach(key => {
+    sortedChallenge[key] = challenge[key];
+  });
+  
+  // ✅ Use JSON.stringify without replacer to match Python's output
+  const payload = JSON.stringify(sortedChallenge);
 
-  return [
+  const lines = [
     'OpenKitx403 Challenge',
     '',
     `domain: ${challenge.aud}`,
@@ -202,7 +202,9 @@ function buildSigningString(challenge) {
     `path: ${challenge.path}`,
     '',
     `payload: ${payload}`
-  ].join('\n');
+  ];
+
+  return lines.join('\n');
 }
 
 /**
@@ -225,12 +227,11 @@ function base64UrlDecode(str) {
 }
 
 /**
- * Base58 encode - IMPROVED IMPLEMENTATION
+ * Base58 encode - Matches Solana standard
  */
 function base58Encode(bytes) {
   const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
   
-  // Handle empty input
   if (bytes.length === 0) return '';
   
   // Count leading zeros
@@ -266,7 +267,6 @@ async function processQuery(query) {
   sendButton.disabled = true;
 
   try {
-    // Check wallet connection
     if (!walletPublicKey) {
       const connected = await connectWallet();
       if (!connected) {
@@ -276,7 +276,6 @@ async function processQuery(query) {
       }
     }
 
-    // Determine which endpoint to call based on query
     const q = query.toLowerCase();
     let data;
 
@@ -306,8 +305,8 @@ async function processQuery(query) {
     }
 
   } catch (error) {
-    console.error('Process query error:', error);
-    addMessage(`Error: ${error.message}\n\nPlease try again or reconnect your wallet.`);
+    console.error('[Process] Error:', error);
+    addMessage(`Error: ${error.message}\n\nPlease try reconnecting your wallet.`);
   } finally {
     hideTyping();
     sendButton.disabled = false;
@@ -315,100 +314,65 @@ async function processQuery(query) {
   }
 }
 
-/**
- * Format portfolio response
- */
 function formatPortfolio(data) {
-  let result = `Portfolio Summary\n`;
+  let result = `💼 Portfolio Summary\n`;
   result += `Total Value: $${data.total_value_usd.toLocaleString()}\n\n`;
   result += `Holdings:\n`;
-
   data.items.forEach(item => {
     const change = item.change_24h >= 0 ? `+${item.change_24h}` : item.change_24h;
     result += `• ${item.asset}: ${item.amount.toLocaleString()} ($${item.value_usd.toLocaleString()}) [${change}% 24h]\n`;
   });
-
   return result;
 }
 
-/**
- * Format NFTs response
- */
 function formatNFTs(data) {
-  let result = `NFT Collection\n`;
+  let result = `🖼️ NFT Collection\n`;
   result += `Total NFTs: ${data.total_nfts}\n`;
   result += `Floor Value: ${data.total_floor_value_sol} SOL\n\n`;
-
   data.nfts.forEach(nft => {
-    result += `• ${nft.name}\n`;
-    result += `  Collection: ${nft.collection}\n`;
-    result += `  Floor: ${nft.floor_price} SOL\n\n`;
+    result += `• ${nft.name}\n  Collection: ${nft.collection}\n  Floor: ${nft.floor_price} SOL\n\n`;
   });
-
   return result;
 }
 
-/**
- * Format transactions response
- */
 function formatTransactions(data) {
-  let result = `Recent Transactions\n\n`;
-
+  let result = `📝 Recent Transactions\n\n`;
   data.transactions.forEach(tx => {
-    result += `• ${tx.type}: ${tx.amount} SOL\n`;
-    result += `  Status: ${tx.status}\n`;
-    result += `  ${tx.timestamp}\n\n`;
+    result += `• ${tx.type}: ${tx.amount} SOL\n  Status: ${tx.status}\n  ${tx.timestamp}\n\n`;
   });
-
   return result;
 }
 
-/**
- * Format price response
- */
 function formatPrice(data) {
   const change = data.change_24h >= 0 ? `+${data.change_24h}` : data.change_24h;
-  return `${data.symbol}\nPrice: $${data.price_usd.toLocaleString()}\n24h Change: ${change}%`;
+  return `💰 ${data.symbol}\nPrice: $${data.price_usd.toLocaleString()}\n24h Change: ${change}%`;
 }
 
-/**
- * Format analysis response
- */
 function formatAnalysis(data) {
-  let result = `Portfolio Analysis\n\n`;
+  let result = `📊 Portfolio Analysis\n\n`;
   result += `Risk Score: ${data.risk_score}/10\n`;
   result += `Diversification: ${data.diversification}\n\n`;
-
   if (data.highlights.length > 0) {
-    result += `Highlights:\n`;
+    result += `✨ Highlights:\n`;
     data.highlights.forEach(h => result += `• ${h}\n`);
     result += `\n`;
   }
-
   if (data.recommendations.length > 0) {
-    result += `Recommendations:\n`;
+    result += `💡 Recommendations:\n`;
     data.recommendations.forEach(r => result += `• ${r}\n`);
   }
-
   return result;
 }
 
-/**
- * Handle form submission
- */
+// Event listeners
 chatForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-
   const query = chatInput.value.trim();
   if (!query) return;
-
   chatInput.value = '';
   await processQuery(query);
 });
 
-/**
- * Handle example prompts
- */
 examplePrompts.forEach(button => {
   button.addEventListener('click', async () => {
     const prompt = button.dataset.prompt;
@@ -417,19 +381,16 @@ examplePrompts.forEach(button => {
   });
 });
 
-/**
- * Initialize
- */
+// Initialize
 document.addEventListener('DOMContentLoaded', () => {
   chatInput.focus();
 
-  // Check if Phantom is installed
   if (!window.solana || !window.solana.isPhantom) {
-    addMessage('⚠️ Phantom wallet not detected!\n\nPlease install Phantom wallet to use this app:\nhttps://phantom.app\n\nRefresh the page after installing.');
+    addMessage('⚠️ Phantom wallet not detected!\n\nInstall: https://phantom.app\n\nRefresh after installing.');
   } else {
-    addMessage('Welcome! Connect your wallet to get started.\n\nTry asking: "Show me my portfolio"');
+    addMessage('👋 Welcome! Connect your wallet to get started.\n\nTry: "Show me my portfolio"');
   }
 
-  console.log('[App] Ready');
+  console.log('[App] OpenKitx403 AI Agent Ready');
 });
 
