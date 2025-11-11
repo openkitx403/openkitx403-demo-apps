@@ -1,6 +1,6 @@
 /**
  * OpenKitx403 AI Agent Frontend
- * Real implementation with wallet authentication
+ * Real implementation with wallet authentication - FIXED
  */
 
 const API_URL = 'https://openkitx403-demo-apps.onrender.com';
@@ -86,7 +86,7 @@ async function connectWallet() {
 
     const response = await window.solana.connect();
     walletPublicKey = response.publicKey.toString();
-    
+
     addMessage(`Connected to wallet: ${walletPublicKey.slice(0, 8)}...${walletPublicKey.slice(-8)}`);
     return true;
   } catch (error) {
@@ -104,7 +104,7 @@ async function authenticatedRequest(endpoint, method = 'GET', body = null) {
   }
 
   const url = `${API_URL}${endpoint}`;
-  
+
   // Step 1: Initial request (will get 403 challenge)
   let response = await fetch(url, {
     method,
@@ -117,7 +117,7 @@ async function authenticatedRequest(endpoint, method = 'GET', body = null) {
   // Step 2: If 403, handle authentication challenge
   if (response.status === 403) {
     const wwwAuth = response.headers.get('WWW-Authenticate');
-    
+
     if (!wwwAuth || !wwwAuth.startsWith('OpenKitx403')) {
       throw new Error('Invalid authentication challenge');
     }
@@ -129,22 +129,22 @@ async function authenticatedRequest(endpoint, method = 'GET', body = null) {
     }
 
     const challengeB64 = challengeMatch[1];
-    
+
     // Decode challenge
     const challengeJson = base64UrlDecode(challengeB64);
     const challenge = JSON.parse(challengeJson);
 
     // Build signing string
     const signingString = buildSigningString(challenge);
-    
-    // Sign with wallet
+
+    // Sign with wallet - FIXED
     const signature = await signMessage(signingString);
-    
+
     // Build authorization header
     const nonce = generateNonce();
     const ts = new Date().toISOString().replace(/\.\d{3}/, '');
     const bind = `${method}:${new URL(url).pathname}`;
-    
+
     const authHeader = `OpenKitx403 addr="${walletPublicKey}", sig="${signature}", challenge="${challengeB64}", ts="${ts}", nonce="${nonce}", bind="${bind}"`;
 
     // Step 3: Retry with authorization
@@ -159,19 +159,30 @@ async function authenticatedRequest(endpoint, method = 'GET', body = null) {
   }
 
   if (!response.ok) {
-    throw new Error(`API error: ${response.status} ${response.statusText}`);
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `API error: ${response.status} ${response.statusText}`);
   }
 
   return response.json();
 }
 
 /**
- * Sign message with Phantom wallet
+ * Sign message with Phantom wallet - FIXED
  */
 async function signMessage(message) {
-  const encodedMessage = new TextEncoder().encode(message);
-  const signedMessage = await window.solana.signMessage(encodedMessage, 'utf8');
-  return base58Encode(signedMessage.signature);
+  try {
+    // Encode message to Uint8Array
+    const encodedMessage = new TextEncoder().encode(message);
+    
+    // ✅ Use correct Phantom signMessage method
+    const { signature } = await window.solana.signMessage(encodedMessage, 'utf8');
+    
+    // ✅ signature is a Uint8Array, base58-encode it
+    return base58Encode(signature);
+  } catch (error) {
+    console.error('Sign message error:', error);
+    throw new Error(`Failed to sign message: ${error.message}`);
+  }
 }
 
 /**
@@ -179,7 +190,7 @@ async function signMessage(message) {
  */
 function buildSigningString(challenge) {
   const payload = JSON.stringify(challenge, Object.keys(challenge).sort());
-  
+
   return [
     'OpenKitx403 Challenge',
     '',
@@ -214,25 +225,36 @@ function base64UrlDecode(str) {
 }
 
 /**
- * Base58 encode (simple implementation)
+ * Base58 encode - IMPROVED IMPLEMENTATION
  */
 function base58Encode(bytes) {
   const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-  let encoded = '';
-  let num = BigInt('0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(''));
   
+  // Handle empty input
+  if (bytes.length === 0) return '';
+  
+  // Count leading zeros
+  let zeros = 0;
+  while (zeros < bytes.length && bytes[zeros] === 0) {
+    zeros++;
+  }
+  
+  // Convert bytes to BigInt
+  let num = 0n;
+  for (let i = 0; i < bytes.length; i++) {
+    num = num * 256n + BigInt(bytes[i]);
+  }
+  
+  // Convert to base58
+  let encoded = '';
   while (num > 0n) {
     const remainder = num % 58n;
     num = num / 58n;
     encoded = ALPHABET[Number(remainder)] + encoded;
   }
   
-  // Handle leading zeros
-  for (let i = 0; i < bytes.length && bytes[i] === 0; i++) {
-    encoded = '1' + encoded;
-  }
-  
-  return encoded;
+  // Add leading '1's for leading zeros
+  return '1'.repeat(zeros) + encoded;
 }
 
 /**
@@ -261,7 +283,7 @@ async function processQuery(query) {
     if (q.includes('portfolio') || q.includes('balance') || q.includes('holdings')) {
       data = await authenticatedRequest('/api/portfolio');
       addMessage(formatPortfolio(data));
-    } 
+    }
     else if (q.includes('nft') || q.includes('collectible')) {
       data = await authenticatedRequest('/api/nfts');
       addMessage(formatNFTs(data));
@@ -284,7 +306,8 @@ async function processQuery(query) {
     }
 
   } catch (error) {
-    addMessage(`Error: ${error.message}\n\nPlease check:\n• Wallet is connected\n• Backend is running\n• CORS is configured`);
+    console.error('Process query error:', error);
+    addMessage(`Error: ${error.message}\n\nPlease try again or reconnect your wallet.`);
   } finally {
     hideTyping();
     sendButton.disabled = false;
@@ -299,12 +322,12 @@ function formatPortfolio(data) {
   let result = `Portfolio Summary\n`;
   result += `Total Value: $${data.total_value_usd.toLocaleString()}\n\n`;
   result += `Holdings:\n`;
-  
+
   data.items.forEach(item => {
     const change = item.change_24h >= 0 ? `+${item.change_24h}` : item.change_24h;
     result += `• ${item.asset}: ${item.amount.toLocaleString()} ($${item.value_usd.toLocaleString()}) [${change}% 24h]\n`;
   });
-  
+
   return result;
 }
 
@@ -315,13 +338,13 @@ function formatNFTs(data) {
   let result = `NFT Collection\n`;
   result += `Total NFTs: ${data.total_nfts}\n`;
   result += `Floor Value: ${data.total_floor_value_sol} SOL\n\n`;
-  
+
   data.nfts.forEach(nft => {
     result += `• ${nft.name}\n`;
     result += `  Collection: ${nft.collection}\n`;
     result += `  Floor: ${nft.floor_price} SOL\n\n`;
   });
-  
+
   return result;
 }
 
@@ -330,13 +353,13 @@ function formatNFTs(data) {
  */
 function formatTransactions(data) {
   let result = `Recent Transactions\n\n`;
-  
+
   data.transactions.forEach(tx => {
     result += `• ${tx.type}: ${tx.amount} SOL\n`;
     result += `  Status: ${tx.status}\n`;
     result += `  ${tx.timestamp}\n\n`;
   });
-  
+
   return result;
 }
 
@@ -355,18 +378,18 @@ function formatAnalysis(data) {
   let result = `Portfolio Analysis\n\n`;
   result += `Risk Score: ${data.risk_score}/10\n`;
   result += `Diversification: ${data.diversification}\n\n`;
-  
+
   if (data.highlights.length > 0) {
     result += `Highlights:\n`;
     data.highlights.forEach(h => result += `• ${h}\n`);
     result += `\n`;
   }
-  
+
   if (data.recommendations.length > 0) {
     result += `Recommendations:\n`;
     data.recommendations.forEach(r => result += `• ${r}\n`);
   }
-  
+
   return result;
 }
 
@@ -375,10 +398,10 @@ function formatAnalysis(data) {
  */
 chatForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  
+
   const query = chatInput.value.trim();
   if (!query) return;
-  
+
   chatInput.value = '';
   await processQuery(query);
 });
@@ -399,13 +422,14 @@ examplePrompts.forEach(button => {
  */
 document.addEventListener('DOMContentLoaded', () => {
   chatInput.focus();
-  
+
   // Check if Phantom is installed
   if (!window.solana || !window.solana.isPhantom) {
     addMessage('⚠️ Phantom wallet not detected!\n\nPlease install Phantom wallet to use this app:\nhttps://phantom.app\n\nRefresh the page after installing.');
   } else {
-    addMessage('Welcome! Click "Connect Wallet" or start asking questions.');
+    addMessage('Welcome! Connect your wallet to get started.\n\nTry asking: "Show me my portfolio"');
   }
-  
+
   console.log('[App] Ready');
 });
+
