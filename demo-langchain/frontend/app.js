@@ -1,6 +1,6 @@
 /**
  * OpenKitx403 AI Agent Frontend
- * FINAL FIX - Matches Python backend exactly
+ * Complete version with full debugging
  */
 
 const API_URL = 'https://openkitx403-demo-apps.onrender.com';
@@ -16,6 +16,9 @@ const examplePrompts = document.querySelectorAll('.example-prompt');
 // Wallet state
 let walletPublicKey = null;
 
+/**
+ * Add message to chat
+ */
 function addMessage(text, isUser = false) {
   const messageDiv = document.createElement('div');
   messageDiv.className = isUser ? 'user-message' : 'agent-message';
@@ -59,6 +62,9 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+/**
+ * Connect to Phantom wallet
+ */
 async function connectWallet() {
   try {
     if (!window.solana || !window.solana.isPhantom) {
@@ -69,9 +75,11 @@ async function connectWallet() {
     const response = await window.solana.connect();
     walletPublicKey = response.publicKey.toString();
 
+    console.log('[Wallet] Connected:', walletPublicKey);
     addMessage(`✅ Connected: ${walletPublicKey.slice(0, 8)}...${walletPublicKey.slice(-8)}`);
     return true;
   } catch (error) {
+    console.error('[Wallet] Connection error:', error);
     addMessage(`Failed to connect wallet: ${error.message}`);
     return false;
   }
@@ -79,7 +87,6 @@ async function connectWallet() {
 
 /**
  * Make authenticated API request with OpenKitx403
- * FIXED: Matches Python backend signature verification
  */
 async function authenticatedRequest(endpoint, method = 'GET', body = null) {
   if (!walletPublicKey) {
@@ -119,9 +126,23 @@ async function authenticatedRequest(endpoint, method = 'GET', body = null) {
 
     console.log('[Auth] Challenge:', challenge);
 
-    // ✅ CRITICAL FIX: Build signing string EXACTLY as Python backend does
+    // Build signing string
     const signingString = buildSigningString(challenge);
     console.log('[Auth] Signing string:', signingString);
+
+    // DEBUG: Verify public key
+    console.log('=== PUBLIC KEY DEBUG ===');
+    console.log('Wallet public key:', walletPublicKey);
+    console.log('Public key length:', walletPublicKey.length);
+    
+    try {
+      const testDecode = base58Decode(walletPublicKey);
+      console.log('Decoded public key length:', testDecode.length);
+      console.log('Decoded public key bytes:', Array.from(testDecode));
+    } catch (e) {
+      console.error('Failed to decode public key:', e);
+    }
+    console.log('=== END PUBLIC KEY DEBUG ===');
 
     // Sign with wallet
     const signature = await signMessage(signingString);
@@ -135,6 +156,7 @@ async function authenticatedRequest(endpoint, method = 'GET', body = null) {
 
     const authHeader = `OpenKitx403 addr="${walletPublicKey}", sig="${signature}", challenge="${challengeB64}", ts="${ts}", nonce="${nonce}", bind="${bind}"`;
 
+    console.log('[Auth] Authorization header built');
     console.log('[Auth] Retrying with auth...');
 
     // Step 3: Retry with authorization
@@ -161,13 +183,39 @@ async function authenticatedRequest(endpoint, method = 'GET', body = null) {
 }
 
 /**
- * Sign message with Phantom wallet
+ * Sign message with Phantom wallet - WITH FULL DEBUG
  */
 async function signMessage(message) {
   try {
+    console.log('=== SIGN MESSAGE DEBUG ===');
+    console.log('Message to sign (first 100 chars):', message.substring(0, 100));
+    console.log('Message length:', message.length);
+    console.log('Wallet public key:', walletPublicKey);
+    
     const encodedMessage = new TextEncoder().encode(message);
-    const { signature } = await window.solana.signMessage(encodedMessage, 'utf8');
-    return base58Encode(signature);
+    console.log('Encoded message length:', encodedMessage.length);
+    console.log('Encoded message (first 20 bytes):', Array.from(encodedMessage.slice(0, 20)));
+    
+    // Sign with Phantom
+    console.log('Calling Phantom signMessage...');
+    const signedMessage = await window.solana.signMessage(encodedMessage, 'utf8');
+    console.log('Phantom returned:', signedMessage);
+    
+    // Extract signature
+    const signature = signedMessage.signature;
+    console.log('Signature type:', typeof signature);
+    console.log('Signature constructor:', signature.constructor.name);
+    console.log('Signature length:', signature.length);
+    console.log('Signature bytes (first 20):', Array.from(signature.slice(0, 20)));
+    console.log('Signature bytes (last 20):', Array.from(signature.slice(-20)));
+    
+    // Encode to base58
+    const signatureB58 = base58Encode(signature);
+    console.log('Signature base58:', signatureB58);
+    console.log('Signature base58 length:', signatureB58.length);
+    console.log('=== END SIGN DEBUG ===');
+    
+    return signatureB58;
   } catch (error) {
     console.error('[Sign] Error:', error);
     throw new Error(`Failed to sign message: ${error.message}`);
@@ -175,11 +223,8 @@ async function signMessage(message) {
 }
 
 /**
- * Build signing string - MATCHES Python backend EXACTLY
- * Python backend does:
- * payload = json.dumps(challenge.to_dict(), sort_keys=True)
+ * Build signing string - WITH DEBUG LOGGING
  */
-
 function buildSigningString(challenge) {
   // Sort keys alphabetically like Python's sort_keys=True
   const sortedKeys = Object.keys(challenge).sort();
@@ -239,7 +284,7 @@ function base64UrlDecode(str) {
 }
 
 /**
- * Base58 encode - Matches Solana standard
+ * Base58 encode
  */
 function base58Encode(bytes) {
   const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
@@ -268,6 +313,42 @@ function base58Encode(bytes) {
   
   // Add leading '1's for leading zeros
   return '1'.repeat(zeros) + encoded;
+}
+
+/**
+ * Base58 decode - for testing
+ */
+function base58Decode(str) {
+  const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  
+  let num = 0n;
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i];
+    const index = ALPHABET.indexOf(char);
+    if (index === -1) throw new Error(`Invalid base58 character: ${char}`);
+    num = num * 58n + BigInt(index);
+  }
+  
+  // Convert to bytes
+  const bytes = [];
+  while (num > 0n) {
+    bytes.unshift(Number(num % 256n));
+    num = num / 256n;
+  }
+  
+  // Count leading '1's (they represent leading zero bytes)
+  let zeros = 0;
+  for (let i = 0; i < str.length && str[i] === '1'; i++) {
+    zeros++;
+  }
+  
+  // Add leading zeros
+  while (zeros > 0) {
+    bytes.unshift(0);
+    zeros--;
+  }
+  
+  return new Uint8Array(bytes);
 }
 
 /**
@@ -326,6 +407,9 @@ async function processQuery(query) {
   }
 }
 
+/**
+ * Format portfolio response
+ */
 function formatPortfolio(data) {
   let result = `💼 Portfolio Summary\n`;
   result += `Total Value: $${data.total_value_usd.toLocaleString()}\n\n`;
@@ -337,6 +421,9 @@ function formatPortfolio(data) {
   return result;
 }
 
+/**
+ * Format NFTs response
+ */
 function formatNFTs(data) {
   let result = `🖼️ NFT Collection\n`;
   result += `Total NFTs: ${data.total_nfts}\n`;
@@ -347,6 +434,9 @@ function formatNFTs(data) {
   return result;
 }
 
+/**
+ * Format transactions response
+ */
 function formatTransactions(data) {
   let result = `📝 Recent Transactions\n\n`;
   data.transactions.forEach(tx => {
@@ -355,11 +445,17 @@ function formatTransactions(data) {
   return result;
 }
 
+/**
+ * Format price response
+ */
 function formatPrice(data) {
   const change = data.change_24h >= 0 ? `+${data.change_24h}` : data.change_24h;
   return `💰 ${data.symbol}\nPrice: $${data.price_usd.toLocaleString()}\n24h Change: ${change}%`;
 }
 
+/**
+ * Format analysis response
+ */
 function formatAnalysis(data) {
   let result = `📊 Portfolio Analysis\n\n`;
   result += `Risk Score: ${data.risk_score}/10\n`;
@@ -376,7 +472,9 @@ function formatAnalysis(data) {
   return result;
 }
 
-// Event listeners
+/**
+ * Handle form submission
+ */
 chatForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const query = chatInput.value.trim();
@@ -385,6 +483,9 @@ chatForm.addEventListener('submit', async (e) => {
   await processQuery(query);
 });
 
+/**
+ * Handle example prompts
+ */
 examplePrompts.forEach(button => {
   button.addEventListener('click', async () => {
     const prompt = button.dataset.prompt;
@@ -393,7 +494,9 @@ examplePrompts.forEach(button => {
   });
 });
 
-// Initialize
+/**
+ * Initialize
+ */
 document.addEventListener('DOMContentLoaded', () => {
   chatInput.focus();
 
@@ -403,6 +506,6 @@ document.addEventListener('DOMContentLoaded', () => {
     addMessage('👋 Welcome! Connect your wallet to get started.\n\nTry: "Show me my portfolio"');
   }
 
-  console.log('[App] OpenKitx403 AI Agent Ready');
+  console.log('[App] OpenKitx403 AI Agent Ready with Full Debug Logging');
 });
 
