@@ -49,7 +49,8 @@ app.add_middleware(
     ttl_seconds=60,
     clock_skew_seconds=120,
     bind_method_path=False,
-    excluded_paths=["/", "/health", "/docs", "/redoc", "/openapi.json"]
+    excluded_paths=["/", "/health", "/docs", "/redoc", "/openapi.json"],
+    excluded_methods=["OPTIONS"]
 )
 
 # Response Models
