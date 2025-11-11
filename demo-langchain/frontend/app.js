@@ -179,18 +179,22 @@ async function signMessage(message) {
  * Python backend does:
  * payload = json.dumps(challenge.to_dict(), sort_keys=True)
  */
+
 function buildSigningString(challenge) {
-  // ✅ CRITICAL: Sort keys and stringify like Python's json.dumps(sort_keys=True)
-  // Python sorts keys alphabetically, not by insertion order
+  // Sort keys alphabetically like Python's sort_keys=True
   const sortedKeys = Object.keys(challenge).sort();
   const sortedChallenge = {};
   sortedKeys.forEach(key => {
     sortedChallenge[key] = challenge[key];
   });
   
-  // ✅ Use JSON.stringify without replacer to match Python's output
   const payload = JSON.stringify(sortedChallenge);
-
+  
+  console.log('=== SIGNING STRING DEBUG ===');
+  console.log('Challenge keys (sorted):', sortedKeys);
+  console.log('Payload:', payload);
+  console.log('Payload length:', payload.length);
+  
   const lines = [
     'OpenKitx403 Challenge',
     '',
@@ -203,8 +207,16 @@ function buildSigningString(challenge) {
     '',
     `payload: ${payload}`
   ];
-
-  return lines.join('\n');
+  
+  const signingString = lines.join('\n');
+  
+  console.log('=== FULL SIGNING STRING ===');
+  console.log(signingString);
+  console.log('=== END ===');
+  console.log('Length:', signingString.length);
+  console.log('Hex:', Array.from(new TextEncoder().encode(signingString)).map(b => b.toString(16).padStart(2, '0')).join(' '));
+  
+  return signingString;
 }
 
 /**
