@@ -223,7 +223,7 @@ async function signMessage(message) {
 }
 
 /**
- * Build signing string - WITH DEBUG LOGGING
+ * Build signing string - MATCHES Python json.dumps() EXACTLY
  */
 function buildSigningString(challenge) {
   // Sort keys alphabetically like Python's sort_keys=True
@@ -233,12 +233,13 @@ function buildSigningString(challenge) {
     sortedChallenge[key] = challenge[key];
   });
   
-  const payload = JSON.stringify(sortedChallenge);
+  // ✅ CRITICAL FIX: Format JSON like Python's json.dumps(sort_keys=True)
+  // Python adds space after : and ,
+  const payload = formatJsonLikePython(sortedChallenge);
   
   console.log('=== SIGNING STRING DEBUG ===');
-  console.log('Challenge keys (sorted):', sortedKeys);
   console.log('Payload:', payload);
-  console.log('Payload length:', payload.length);
+  console.log('Payload length:', payload.length, '(should be 495)');
   
   const lines = [
     'OpenKitx403 Challenge',
@@ -255,13 +256,39 @@ function buildSigningString(challenge) {
   
   const signingString = lines.join('\n');
   
-  console.log('=== FULL SIGNING STRING ===');
-  console.log(signingString);
-  console.log('=== END ===');
-  console.log('Length:', signingString.length);
-  console.log('Hex:', Array.from(new TextEncoder().encode(signingString)).map(b => b.toString(16).padStart(2, '0')).join(' '));
+  console.log('Signing string length:', signingString.length, '(should be 495)');
   
   return signingString;
+}
+
+/**
+ * Format JSON like Python's json.dumps()
+ * Python adds space after : and , by default
+ */
+function formatJsonLikePython(obj) {
+  function formatValue(value) {
+    if (value === null) {
+      return 'null';
+    } else if (typeof value === 'boolean') {
+      return value ? 'true' : 'false';
+    } else if (typeof value === 'number') {
+      return String(value);
+    } else if (typeof value === 'string') {
+      return JSON.stringify(value);
+    } else if (Array.isArray(value)) {
+      const items = value.map(formatValue);
+      return '[' + items.join(', ') + ']';
+    } else if (typeof value === 'object') {
+      const keys = Object.keys(value).sort();
+      const pairs = keys.map(key => {
+        return JSON.stringify(key) + ': ' + formatValue(value[key]);
+      });
+      return '{' + pairs.join(', ') + '}';
+    }
+    return String(value);
+  }
+  
+  return formatValue(obj);
 }
 
 /**
