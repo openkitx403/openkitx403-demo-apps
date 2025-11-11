@@ -10,6 +10,46 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <style>
+    .demo-notice {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border: 1px solid rgba(153, 69, 255, 0.2);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin: 24px 0;
+      display: flex;
+      align-items: start;
+      gap: 12px;
+    }
+    
+    .demo-notice-icon {
+      color: #9945ff;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    
+    .demo-notice-content {
+      flex: 1;
+    }
+    
+    .demo-notice-title {
+      color: #ffffff;
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+    
+    .demo-notice-text {
+      color: #a0a0b0;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .demo-notice-text strong {
+      color: #9945ff;
+      font-weight: 500;
+    }
+  </style>
 </head>
 <body>
   <div class="app">
@@ -35,6 +75,22 @@
             Ask questions, get insights, and manage your portfolio conversationally.
           </p>
         </section>
+
+        <div class="demo-notice">
+          <div class="demo-notice-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+          </div>
+          <div class="demo-notice-content">
+            <div class="demo-notice-title">Demo Implementation Notice</div>
+            <div class="demo-notice-text">
+              This demo showcases <strong>OpenKitx403 wallet authentication</strong>. All portfolio data, NFTs, and transactions are simulated for demonstration purposes only. Your wallet is used solely to authenticate API requests - no actual on-chain data is accessed.
+            </div>
+          </div>
+        </div>
 
         <div class="chat-container">
           <div class="chat-messages" id="chatMessages">
@@ -83,11 +139,11 @@
               <button class="example-prompt" data-prompt="Analyze my portfolio">Analyze</button>
             </div>
             <form class="chat-input-form" id="chatForm">
-              <input 
-                type="text" 
-                class="chat-input" 
-                id="chatInput" 
-                placeholder="Ask about your wallet..." 
+              <input
+                type="text"
+                class="chat-input"
+                id="chatInput"
+                placeholder="Ask about your wallet..."
                 autocomplete="off"
                 required
               />
@@ -135,3 +191,4 @@
   <script src="app.js"></script>
 </body>
 </html>
+
