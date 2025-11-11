@@ -1,12 +1,12 @@
 """
 OpenKitx403 AI Agent API
-FastAPI backend with wallet authentication - OPTIONS MIDDLEWARE FIX
+FastAPI backend with wallet authentication - CORS FIX
 """
 
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response
+from starlette.responses import Response, JSONResponse
 from openkitx403 import (
     OpenKit403Middleware,
     require_openkitx403_user,
@@ -18,7 +18,6 @@ from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
 app = FastAPI(
@@ -33,38 +32,46 @@ app = FastAPI(
 API_URL = os.getenv("API_URL", "https://openkitx403-demo-apps.onrender.com")
 ISSUER = os.getenv("ISSUER", "ai-agent-api")
 
+# CRITICAL: Define allowed origins (add your Vercel domain)
+FRONTEND_ORIGINS = [
+    "https://langchain-demo.openkitx403.dev", 
+    "https://openkitx403-demo-apps-sdkw.vercel.app",
+    "https://openkitx403-demo-apps.onrender.com",
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173"
+]
 
-# ===== CRITICAL: OPTIONS Middleware (MUST BE FIRST) =====
-class OptionsMiddleware(BaseHTTPMiddleware):
-    """Handle OPTIONS requests before any other middleware"""
-    async def dispatch(self, request, call_next):
-        if request.method == "OPTIONS":
-            return Response(
-                status_code=200,
-                headers={
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-                    "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept, Origin",
-                    "Access-Control-Max-Age": "3600",
-                }
-            )
-        return await call_next(request)
-
-
-# Add OPTIONS middleware FIRST
-app.add_middleware(OptionsMiddleware)
-
-# Then CORS Middleware
+# ===== STEP 1: CORS Middleware (FIRST) =====
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=FRONTEND_ORIGINS,  # ✅ Specify exact origins instead of ["*"]
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "Accept", "Origin", "User-Agent"],
     expose_headers=["WWW-Authenticate", "Authorization"]
 )
 
-# Finally OpenKit403 Middleware
+# ===== STEP 2: Custom CORS Response Middleware (handles all responses) =====
+class EnsureCORSMiddleware(BaseHTTPMiddleware):
+    """Ensure CORS headers are added to ALL responses, including 403 errors"""
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        
+        origin = request.headers.get("origin")
+        if origin in FRONTEND_ORIGINS:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Accept, Origin, User-Agent"
+            response.headers["Access-Control-Expose-Headers"] = "WWW-Authenticate, Authorization"
+        
+        return response
+
+app.add_middleware(EnsureCORSMiddleware)
+
+# ===== STEP 3: OpenKit403 Middleware (LAST) =====
 app.add_middleware(
     OpenKit403Middleware,
     audience=API_URL,
@@ -148,14 +155,10 @@ def health_check():
     }
 
 
-# Protected Routes (require wallet authentication)
-
+# Protected Routes
 @app.get("/api/portfolio", response_model=PortfolioResponse)
 def get_portfolio(user: OpenKit403User = Depends(require_openkitx403_user)):
-    """
-    Get user portfolio with token balances and values
-    Requires wallet authentication via OpenKitx403
-    """
+    """Get user portfolio with token balances and values"""
     return {
         "wallet": str(user.address),
         "total_value_usd": 17800.00,
@@ -183,10 +186,7 @@ def get_portfolio(user: OpenKit403User = Depends(require_openkitx403_user)):
 
 @app.get("/api/nfts", response_model=NFTResponse)
 def get_nfts(user: OpenKit403User = Depends(require_openkitx403_user)):
-    """
-    Get user NFT collection
-    Requires wallet authentication via OpenKitx403
-    """
+    """Get user NFT collection"""
     return {
         "wallet": str(user.address),
         "total_nfts": 3,
@@ -219,10 +219,7 @@ def get_nfts(user: OpenKit403User = Depends(require_openkitx403_user)):
 
 @app.get("/api/transactions", response_model=TransactionResponse)
 def get_transactions(user: OpenKit403User = Depends(require_openkitx403_user)):
-    """
-    Get recent transaction history
-    Requires wallet authentication via OpenKitx403
-    """
+    """Get recent transaction history"""
     return {
         "wallet": str(user.address),
         "transactions": [
@@ -255,10 +252,7 @@ def get_token_price(
     symbol: str,
     user: OpenKit403User = Depends(require_openkitx403_user)
 ):
-    """
-    Get current token price and 24h change
-    Requires wallet authentication via OpenKitx403
-    """
+    """Get current token price and 24h change"""
     prices = {
         "SOL": {"price_usd": 100.50, "change_24h": 2.5},
         "BTC": {"price_usd": 42500.00, "change_24h": 1.2},
@@ -266,16 +260,16 @@ def get_token_price(
         "USDC": {"price_usd": 1.00, "change_24h": 0.0},
         "BONK": {"price_usd": 0.00025, "change_24h": -5.2}
     }
-    
+
     symbol_upper = symbol.upper()
     token_data = prices.get(symbol_upper)
-    
+
     if not token_data:
         raise HTTPException(
             status_code=404,
             detail=f"Price data not available for {symbol_upper}"
         )
-    
+
     return {
         "symbol": symbol_upper,
         "price_usd": token_data["price_usd"],
@@ -284,10 +278,7 @@ def get_token_price(
 
 @app.post("/api/analyze", response_model=AnalysisResponse)
 def analyze_portfolio(user: OpenKit403User = Depends(require_openkitx403_user)):
-    """
-    Get AI-powered portfolio analysis and recommendations
-    Requires wallet authentication via OpenKitx403
-    """
+    """Get AI-powered portfolio analysis and recommendations"""
     return {
         "wallet": str(user.address),
         "risk_score": 6.5,
@@ -307,15 +298,6 @@ def analyze_portfolio(user: OpenKit403User = Depends(require_openkitx403_user)):
     }
 
 
-# Error handler
-@app.exception_handler(Exception)
-async def global_exception_handler(request, exc):
-    return {
-        "error": "internal_server_error",
-        "detail": str(exc)
-    }
-
-
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
@@ -325,3 +307,4 @@ if __name__ == "__main__":
         port=port,
         log_level="info"
     )
+
