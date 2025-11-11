@@ -1,10 +1,12 @@
 """
 OpenKitx403 AI Agent API
-FastAPI backend with wallet authentication - OPTIONS FIX
+FastAPI backend with wallet authentication - OPTIONS MIDDLEWARE FIX
 """
 
-from fastapi import FastAPI, Depends, HTTPException, Request, Response
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 from openkitx403 import (
     OpenKit403Middleware,
     require_openkitx403_user,
@@ -31,21 +33,28 @@ app = FastAPI(
 API_URL = os.getenv("API_URL", "https://openkitx403-demo-apps.onrender.com")
 ISSUER = os.getenv("ISSUER", "ai-agent-api")
 
-# ===== CRITICAL: Handle OPTIONS first =====
-@app.options("/{full_path:path}")
-async def options_handler(request: Request, full_path: str):
-    """Handle all OPTIONS requests (CORS preflight)"""
-    return Response(
-        status_code=200,
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept, Origin",
-            "Access-Control-Max-Age": "3600",
-        }
-    )
 
-# CORS Middleware
+# ===== CRITICAL: OPTIONS Middleware (MUST BE FIRST) =====
+class OptionsMiddleware(BaseHTTPMiddleware):
+    """Handle OPTIONS requests before any other middleware"""
+    async def dispatch(self, request, call_next):
+        if request.method == "OPTIONS":
+            return Response(
+                status_code=200,
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept, Origin",
+                    "Access-Control-Max-Age": "3600",
+                }
+            )
+        return await call_next(request)
+
+
+# Add OPTIONS middleware FIRST
+app.add_middleware(OptionsMiddleware)
+
+# Then CORS Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -55,7 +64,7 @@ app.add_middleware(
     expose_headers=["WWW-Authenticate", "Authorization"]
 )
 
-# OpenKit403 Middleware - after CORS
+# Finally OpenKit403 Middleware
 app.add_middleware(
     OpenKit403Middleware,
     audience=API_URL,
@@ -65,6 +74,7 @@ app.add_middleware(
     bind_method_path=False,
     excluded_paths=["/", "/health", "/docs", "/redoc", "/openapi.json"]
 )
+
 
 # Response Models
 class PortfolioItem(BaseModel):
